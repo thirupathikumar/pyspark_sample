@@ -1,0 +1,78 @@
+list database: show dbs
+
+use database: use <db_name>
+
+list collections: show collections
+
+select from table where user_id equal to 100: use <db_name> db.users.find( {user_id: 100} )
+
+get count: db.users.count()
+
+get the query execution detail: db.users.explain.find( {user_id: 100} )
+In the explain output we can see the COLLSCAN -> we can find the whole column scanning is happening and find the value 100. 
+
+db.users.createIndex( {user_id: 1} ) => this will sort the data in ascending order 
+After creating the index if we run the explain statement it will show IXSCAN i.e. index scan and index name also displayed over there. 
+
+#group by occuption and get the avg age for each occupation 
+$group means the $ has special meaning in mongo db 
+db.users.aggregate ( [ {$group: {_id: {occupation: "$occupation"}, avgAge: { $avg: "$age" }}} ] )
+
+Get info about the collection: db.getCollectionInfos()
+
+Note: It is not recommended to use join while using mongo db since the nosql database is sort of denormalized. We can read and write the data the way more faster than the OLTP. 
+
+*****************************************************************************************************************************************
+Choose Right database for your system:
+----------------------------------------
+1.Scalability requirements - our application need higher scalability or not. If we are building the next big things then we should be able to scale it in horizontal manner. NoSQL is just for that purpose, i.e. for horizontal scalability. Cassandara, HBase and Mongo db can scale horizontally 
+
+2.Integration - We have to choose right databases which can easily integrate with other components. Spark can easily integrate with many system. 
+
+3.IT support needed - Ensure we have the knowledgeful team is available 
+
+4.Cost consideration 
+
+5.CAP theorem for distributed system the partition tolerance is must needed and there is trade off between Availabilty and Consisteny. 
+
+Consistency + Partition Tolerance => Redis + Mongo DB + HBase - This gives the higher consistency and partition tolerance. Partition Tolerance means the system should be scalable and can accomodate the high load on the system and it act as per the requirements. 
+
+If we are not handling the very large data and we have the legacy system (means the data is not growing that much), then you can choose any RDBMS becuse it provide consistency and availability. But it does not suitable for handling big data so if you don't have big data RDBMS pretty much do all the requirements we need. (MySQL SQL Serer Oracle Vertica SAP HANA Neo4J Amazon redshift)   
+
+Availabilty  + Partition Tolerance => DynamoDB  + Cassandra + CouchDB (Cassandra does not have any master servers it has the passive protocol with the node will communicate each other to all the decision like store the data and process it.). This is not suitable for the finanical transactions like stock exchange etc. We can't afford to give the wrong value. 
+Note: To easily remember AP CDC (Cassandra DynamoDB CouchDB) 
+
+
+Assume we are building the phone directory and we need Scalability Integration Availabilty Consistency (Eventual Consistency is fine for sometime even if we are getting the recent information then it is fine) Support Needed -> What to choose -> MySQL would be enough 
+
+Assume we need to migrate web server log and we have to do the analytics and the data expectation is huge -> What to choose -> We can migrate in HDFS and use apache spark, we don't even need the NoSQL here
+
+Assume we have big analytics jobs which provide the product recommendation for the end user and million of user visiting web site -> We need scalability and partition tolerance we don't need the latest data at every time so we can get away with consistence but our system should be highly available -> Cassandra is the best solution. We can run the spark job to provide the analytics solution 
+
+
+
+
+
+
+
+ 
+
+
+
+
+ 
+
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+*****************************************************************************************************************************************
