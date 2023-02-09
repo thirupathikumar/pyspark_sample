@@ -1,0 +1,13 @@
+Ref - https://www.youtube.com/watch?v=L4BO3y-3sA8&list=PLCLE6UVwCOi1FRysr-OA6UM_kl2Suoubn
+
+How spark create partitions - https://www.youtube.com/watch?v=9HY8KG2FWF0&t=667s
+In local mode -> default no of partitions -> no of core allotted to the application
+
+In cluster mode -> default no of partitions = no of blocks (or) no of input split 
+Note: In HDFS while reading the file if the number of block is equal to 1 then spark will create 2 partitions(defaultParallelism value), this is because the spark needs more than one partition to do the parallel processing.  
+Note: Assume we have small files less than 128 MB we stored 100 files inside a directory (assume total size is 256MB and HDFS block size is 128MB). Now if we read that directory in spark there would be 100 partitions will be created. This is because the number blocks (i think it is input split) created in HDFS is 100 because of that reason it will create the 100 partitions. 
+
+Assume we stored single file and that size is 80 MB so only one block will be created. This time spark will create two partitions 
+
+Note: The number of partition created depends on storage system architecture
+
