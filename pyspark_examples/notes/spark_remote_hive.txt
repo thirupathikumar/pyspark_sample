@@ -1,0 +1,436 @@
+https://sparkbyexamples.com/apache-hive/how-to-connect-spark-to-remote-hive/
+
+Apache Hive has a large number of dependencies, these dependencies are not included in the default Spark distribution hence you need to provide them in the Spark class-path (to Driver and Executors). These Hive dependencies are required to be present on all of the worker nodes, as they will need access to the Hive serialization and deserialization libraries (SerDes) in order to access data stored in Hive.
+
+The below snippet has some dependencies you would be required.
+
+<dependency>
+   <groupId>org.apache.spark</groupId>
+   <artifactId>spark-core_2.13</artifactId>
+   <version>3.2.1</version>
+   <scope>compile</scope>
+</dependency>
+
+<dependency>
+   <groupId>org.apache.spark</groupId>
+   <artifactId>spark-sql_2.13</artifactId>
+   <version>3.2.1</version>
+   <scope>compile</scope>
+</dependency>
+
+<dependency>
+   <groupId>org.apache.spark</groupId>
+   <artifactId>spark-hive_2.13</artifactId>
+   <version>3.2.1</version>
+</dependency>
+
+Besides the above dependencies, you would also require the following files in your $SPARK_HOME/conf directory or in the classpath.
+hive-site.xml – Hive configurations like metastore details
+core-site.xml – Used for Security configurations
+hdfs-site.xml – Used for HDFS configurations
+You can find the hive-site.xml at $HIVE_HOME/conf and the other two at Hadoop conf.
+
+If you don’t have hive-site.xml, you can create one with the below minimum config (with Hive metastore details).
+
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>hive.metastore.uris</name>
+    <value>thrift://192.168.1.190:9083</value>
+  </property>
+</configuration>
+
+Note that the hive.metastore.warehouse.dir property in hive-site.xml is deprecated since Spark 2.0.0. Instead, use spark.sql.warehouse.dir to specify the default location of database in warehouse. 
+
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session with Hive enabled
+val spark = SparkSession.builder().master("local[*]")
+    .appName("SparkByExamples.com")
+    .config("spark.sql.warehouse.dir","/users/hive/warehouse")
+    .enableHiveSupport()
+    .getOrCreate()
+	
+The following are two important properties of Hive you would need to understand to connect Spark to a remote Hive database.
+
+Hive Meatastore – Specified by using hive.metastore.uri property
+Hive Warehouse – Specified by using spark.sql.warehouse.dir property
+Hive Metastore: The Hive Metastore is used to store the metadata about the database and tables and by default, it uses the Derby database; You can change this to any RDBMS database like MySQL and Postgress e.t.c. By default the Metastore database name is metastore_db.
+
+Hive Warehouse: Hive stores tables files by default at /user/hive/warehouse location on HDFS file system. You need to create these directories on HDFS before you use Hive. On this location, you can find the directories for all databases you create and subdirectories with the table name you use.
+
+Alternatively, If you don’t have hive-site.xml, you can also create SparkSession by pointing hive.metastore.uris to the remote Hive cluster metastore. In the below, change the IP address and Port according to your Hive metastore server address and port.
+
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session with Hive enabled
+val spark = SparkSession.builder().master("local[*]")
+    .appName("SparkByExamples.com")
+    .config("hive.metastore.uris", "thrift://192.168.1.190:9083")
+    .config("spark.sql.warehouse.dir","/users/hive/warehouse")
+    .enableHiveSupport()
+    .getOrCreate()
+	
+Spark SQL connects to remote Hive metastore using thrift, so we need to provide the thrift server URI while creating the Spark session.
+
+Make sure you have the Hive server running if not, first, Run the HiveServer2
+
+
+$HIVE_HOME/bin/hiveserver2
+Second, Run the Hive metastore by using the below command.
+
+
+$HIVE_HOME/bin/hive --service metastore
+...
+Starting Hive Metastore Server
+Next, run the following Spark program which connects to remote Hive, creates the database emp, and finally saves the Spark DataFram to Hive table
+
+import org.apache.spark.sql.SparkSession
+
+// Create Spark Session with Hive enabled
+val spark = SparkSession.builder().master("local[*]")
+    .appName("SparkByExamples.com")
+    .config("hive.metastore.uris", "thrift://192.168.1.190:9083")
+    .config("spark.sql.warehouse.dir","/users/hive/warehouse")
+    .enableHiveSupport()
+    .getOrCreate()
+
+import spark.implicits._
+
+// Create DataFrame
+val sampleDF = Seq((1, "James",30,"M"),
+    (2, "Ann",40,"F"), (3, "Jeff",41,"M"),
+    (4, "Jennifer",20,"F")
+    ).toDF("id", "name","age","gender")
+
+// Create Database
+spark.sql("CREATE DATABASE IF NOT EXISTS emp")
+
+// Create Hive Internal table
+sampleDF.write.mode(SaveMode.Overwrite)
+    .saveAsTable("emp.employee")
+	
+// Read Hive table
+val df = spark.sql("select * from emp.employee")
+df.show()
+
+Connect to Remote Hive From Shell
+To connect to remove Hive from Spark-shell use the below.
+
+$SPARK_HOME/bin/spark-shell \
+  --files hive-site.xml,hdfs-site.xml,hive-site.xml \ 
+  --conf spark.sql.warehouse.dir=hdfs://namenode-name:9000/user/hive/warehouse
+
+
+
+https://medium.com/@o20021106/how-to-connect-to-remote-hive-cluster-with-pyspark-fabc04c42283
+
+The following is how I connect to hive on a remote cluster, and also to hive tables that use hbase as external storage
+
+Copy core-site.xml, hdfs-site.xml, hive-site.xml, hbase-site.xml, from your cluster running hive, and paste it to your spark’s /conf directory
+add any jar files to spark’s /jar directory.
+run pyspark
+Create a spark session and make sure to enable hive support.
+from pyspark.sql import SparkSession
+from pyspark.sql import Row
+spark = SparkSession \
+    .builder \
+    .appName("Python Spark SQL Hive integration example") \
+    .enableHiveSupport() \
+    .getOrCreate()
+5. query away!
+
+spark.sql("show tables").show()
+
+https://www.linkedin.com/pulse/running-spark-sql-applications-remote-hive-cluster-oliver-mascarenhas/
+
+from pyspark import SparkContext, SparkConf
+from pyspark.conf import SparkConf
+from pyspark.sql import SparkSession, HiveContext
+"""
+SparkSession ss = SparkSession
+.builder()
+.appName(" Hive example")
+.config("hive.metastore.uris", "thrift://localhost:9083")
+.enableHiveSupport()
+.getOrCreate();
+"""
+
+sparkSession = (SparkSession
+                .builder
+                .appName('example-pyspark-read-and-write-from-hive')
+                .config("hive.metastore.uris", "thrift://localhost:9083", conf=SparkConf())
+                .enableHiveSupport()
+                .getOrCreate()
+                )
+data = [('First', 1), ('Second', 2), ('Third', 3), ('Fourth', 4), ('Fifth', 5)]
+df = sparkSession.createDataFrame(data)
+# Write into Hive
+#df.write.saveAsTable('example')
+
+df_load = sparkSession.sql('SELECT * FROM example')
+df_load.show()
+print(df_load.show())
+
+https://stackoverflow.com/questions/39997224/how-to-connect-to-remote-hive-server-from-spark
+
+
+*****************************************************************************************************************************************
+
+https://stackoverflow.com/questions/31980584/how-to-connect-spark-sql-to-remote-hive-metastore-via-thrift-protocol-with-nodes
+
+https://stackoverflow.com/questions/31980584/how-to-connect-spark-sql-to-remote-hive-metastore-via-thrift-protocol-with-no
+
+val spark = SparkSession
+          .builder()
+          .appName("interfacing spark sql to hive metastore without configuration file")
+          .config("hive.metastore.uris", "thrift://localhost:9083") // replace with your hivemetastore service's thrift url
+          .enableHiveSupport() // don't forget to enable hive support
+          .getOrCreate()
+
+        import spark.implicits._
+        import spark.sql
+        // create an arbitrary frame
+        val frame = Seq(("one", 1), ("two", 2), ("three", 3)).toDF("word", "count")
+        // see the frame created
+        frame.show()
+        /**
+         * +-----+-----+
+         * | word|count|
+         * +-----+-----+
+         * |  one|    1|
+         * |  two|    2|
+         * |three|    3|
+         * +-----+-----+
+         */
+        // write the frame
+        frame.write.mode("overwrite").saveAsTable("t4")
+		
+
+Some of the similar questions are marked as duplicate, this is to connect to Hive from Spark without using hive.metastore.uris or separate thrift server(9083) and not copying hive-site.xml to the SPARK_CONF_DIR.
+
+import org.apache.spark.sql.SparkSession
+val spark = SparkSession
+  .builder()
+  .appName("hive-check")
+  .config(
+    "spark.hadoop.javax.jdo.option.ConnectionURL",
+    "JDBC_CONNECT_STRING"
+  )
+  .config(
+    "spark.hadoop.javax.jdo.option.ConnectionDriverName",
+    "org.postgresql.Driver"
+  )
+  .config("spark.sql.warehouse.dir", "/user/hive/warehouse")
+  .config("spark.hadoop.javax.jdo.option.ConnectionUserName", "JDBC_USER")
+  .config("spark.hadoop.javax.jdo.option.ConnectionPassword", "JDBC_PASSWORD")
+  .enableHiveSupport()
+  .getOrCreate()
+spark.catalog.listDatabases.show(false)
+
+Spark Version : 2.0.2
+
+Hive Version : 1.2.1
+
+Below Java code worked for me to connect to Hive metastore from Spark:
+
+import org.apache.spark.sql.SparkSession;
+
+public class SparkHiveTest {
+
+    public static void main(String[] args) {
+
+        SparkSession spark = SparkSession
+                  .builder()
+                  .appName("Java Spark Hive Example")
+                  .config("spark.master", "local")
+                  .config("hive.metastore.uris",                
+                   "thrift://abc123.com:9083")
+                  .config("spark.sql.warehouse.dir", "/apps/hive/warehouse")
+                  .enableHiveSupport()
+                  .getOrCreate();
+
+        spark.sql("SELECT * FROM default.survey_data limit 5").show();
+    }
+}
+
+I observed one strange behavior while trying connecting to hive metastore from spark without using hive-site.xml.
+
+Everything works fine When we use hive.metastore.uris property within spark code while creating SparkSession. But if we don't specify in code but specify while using spark-shell or spark-submit with --conf flag it will not work.
+
+It will throw a warning as shown below and it will not connect to remote metastore.
+
+Warning: Ignoring non-Spark config property: hive.metastore.uris
+One workaround for this is to use below property.
+
+spark.hadoop.hive.metastore.uris
+
+https://medium.com/ibm-data-ai/access-kerberized-hive-from-a-spark-job-over-jdbc-8448f6890707
+JDBC related libraries
+/home/hadoop/spark/jars.all/hive-jdbc-2.3.7.jar
+/home/hadoop/spark/jars.all/spark-hive_2.11-2.4.7.jar
+/home/hadoop/spark/jars.all/libthrift-0.9.3.jar
+/home/hadoop/spark/jars.all/hive-metastore-2.3.7.jar
+/home/hadoop/spark/jars.all/hive-service-2.3.7.jar
+/home/hadoop/spark/jars.all/hive-exec-2.3.7.jar
+
+
+https://olivermascarenhas.com/2018-12-28-connecting-spark-application-with-remote-hive-metastore/
+
+
+
+$SPARK_HOME/bin/spark-shell \
+  --jars \
+    $HIVE_HOME/lib/hive-metastore-2.3.6.jar,\
+    $HIVE_HOME/lib/hive-exec-2.3.6.jar,\
+    $HIVE_HOME/lib/hive-common-2.3.6.jar,\
+    $HIVE_HOME/lib/hive-serde-2.3.6.jar,\
+    $HIVE_HOME/lib/guava-14.0.1.jar \
+  --conf spark.sql.hive.metastore.version=2.3 \
+  --conf spark.sql.hive.metastore.jars=$HIVE_HOME"/lib/*" \
+  --conf spark.sql.warehouse.dir=hdfs://localhost:9000/user/hive/warehouse
+  
+https://books.japila.pl/spark-sql-internals/demo/connecting-spark-sql-to-hive-metastore/#other-steps
+
+
+
+
+*****************************************************************************************************************************************
+HADOOP_HOME 
+5
+
+
+Navigate to the path where hadoop is installed. locate ${HADOOP_HOME}/etc/hadoop, e.g.
+
+/usr/lib/hadoop-2.2.0/etc/hadoop
+When you type the ls for this folder you should see all these files.
+
+capacity-scheduler.xml      httpfs-site.xml
+configuration.xsl           log4j.properties
+container-executor.cfg      mapred-env.cmd
+core-site.xml               mapred-env.sh
+core-site.xml~              mapred-queues.xml.template
+hadoop-env.cmd              mapred-site.xml
+hadoop-env.sh               mapred-site.xml~
+hadoop-env.sh~              mapred-site.xml.template
+hadoop-metrics2.properties  slaves
+hadoop-metrics.properties   ssl-client.xml.example
+hadoop-policy.xml           ssl-server.xml.example
+hdfs-site.xml               yarn-env.cmd
+hdfs-site.xml~              yarn-env.sh
+httpfs-env.sh               yarn-site.xml
+httpfs-log4j.properties     yarn-site.xml~
+httpfs-signature.secret
+Core configuration settings are available in hadoop-env.sh.
+
+You can see classpath settings in this file and I copied some sample here for your reference.
+
+# The java implementation to use.
+export JAVA_HOME=/usr/lib/jvm/jdk1.7.0_67
+
+# The jsvc implementation to use. Jsvc is required to run secure datanodes.
+#export JSVC_HOME=${JSVC_HOME}
+
+export HADOOP_CONF_DIR=${HADOOP_CONF_DIR}
+
+# Extra Java CLASSPATH elements.  Automatically insert capacity-scheduler.
+for f in $HADOOP_HOME/contrib/capacity-scheduler/*.jar; do
+    export HADOOP_CLASSPATH=${HADOOP_CLASSPATH+$HADOOP_CLASSPATH:}$f
+done
+
+
+Here /usr/hdp/current/hadoop-client/bin/ will be your Hadoop home
+
+HADOOP_HOME is not a global variable, it is used by Hadoop daemons from hadoop env file
+
+Hadoop or HDP will be installed under /usr/hdp/version and symlink /usr/hdp/current
+
+This may occur due to following reasons:
+
+You are not logging into your user that you have created for Hadoop.
+
+You have not specified the path for Hadoop home path all-together.
+
+The Variable that you are using for storing hadoop home has a different name. for example : HADOOP_PREFIX.
+
+Whatever the case is you can check your .profile or .bashrc file where you have specified HADOOP_HOME path.
+
+This can be done by both Terminal or GUI:
+
+I. By Terminal
+
+Login in into your hadoop user by using $su - hduser (note: in my case user name is hduser)
+
+Then open .profile file by using $vi .profile
+
+get down to the bottom of the file and you will see your home path for hadoop.
+
+alternatively,
+
+open .bashrc file by using $sudo gedit .bashrc
+
+scroll down to bottom and check your hadoop home path there.
+
+II. By GUI
+
+goto /home in your linux system.
+
+there you will find user folder for hadoop in my case it was hduser.
+
+there you will find .bashrc and .profile file. open them and confirm your path for hadoop home
+
+
+Spark Home Directory
+
+Normally SPARK_HOME=/usr/hdp/current/spark-client.
+
+
+Run
+
+echo 'sc.getConf.get("spark.home")' | spark-shell
+After a moment your Spark home will be printed, you'll see something like this:
+
+scala> sc.getConf.get("spark.home")
+res0: String = /usr/local/lib/python3.7/site-packages/pyspark
+So in this case my Spark Home is /usr/local/lib/python3.7/site-packages/pyspark
+
+This also worked for me:
+
+cd $SPARK_HOME
+
+It will take you to the directory where Spark was installed, if that environment variable is set.
+
+
+You should search for spark-shell instead
+
+whereis spark-shell
+Typically this would resolve to a path like this /opt/spark-2.3.1-bin-hadoop2.7
+
+
+****************************************************************************************************************************************
+https://sparkbyexamples.com/spark/check-spark-version/
+
+Check Spark Version 
+
+Like any other tools or language, you can use –version option with spark-submit, spark-shell, and spark-sql to find the version.
+
+
+spark-submit --version
+spark-shell --version
+spark-sql --version
+
+cd to $SPARK_HOME/bin
+Launch spark-shell command
+Enter sc.version or spark.version
+
+
+How to know hive version in cloudera?
+on linux shell : "hive --version"
+on hive shell : " ! hive --version;"
+
+****************************************************************************************************************************************
+
+
+
+
