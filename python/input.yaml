@@ -1,0 +1,19 @@
+table_mapping:
+ db.table1:
+  col1: int
+  col2: string
+ db.table2:
+  col3: int
+  col4: string
+spark_hive_datatype_mapping:
+ ByteType: tinyint
+ ShortType: smallint
+ IntegerType: integer
+ LongType: long
+ StringType: string
+ FloatType: float
+ DoubleType: double
+ DecimalType: decimal
+ DateTimeType: datetime
+ TimestampType: timestamp
+   
