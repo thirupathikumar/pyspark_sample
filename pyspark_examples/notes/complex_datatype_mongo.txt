@@ -1,0 +1,154 @@
+Ref - https://stackoverflow.com/questions/71644191/mixed-schema-datatype-json-to-pyspark-dataframe
+If you do not want to pass a schema or want spark to detect schema from 3.0+ you can write json into a table
+
+%sql
+
+CREATE TABLE newtable AS SELECT
+'{
+    "Id": "2345123",
+    "name": "something",        
+    "sentTimestamp": 1646732402,
+    "complex":
+    [
+        {
+            "key1": 1,
+            "key2": "(1)",
+            "key3": 0.5,
+            "key4":
+            {
+                "innerkey1": "random",
+                "innerkey2": 5.4,
+                "innerkey3": 1
+            }
+        },
+        {
+            "key1": 2,
+            "key2": "(2)",
+            "key3": 0.5,
+            "key4":
+            {
+                "innerkey1": "left",
+                "innerkey2": 7.8,
+                "innerkey3": 1
+            }
+        }
+    ]
+}'as original
+
+Convert the table into a dataframe
+
+df1 =spark.sql('select * from newtable')
+rdd the single column in the table
+
+rdd=df1.select(col("original").alias("jsoncol")).rdd.map(lambda x: x.jsoncol)
+Leverage .read to read the rdd schema and set is avariable
+
+newschema=spark.read.json(rdd).schema
+
+Assign schema to column using select
+
+df3=df1.select("*",from_json("original", newschema).alias("transrequest"))
+
+df3.select('transrequest.*').show(truncate=False)
+
++-------+----------------------------------------------------------------+---------+-------------+
+|Id     |complex                                                         |name     |sentTimestamp|
++-------+----------------------------------------------------------------+---------+-------------+
+|2345123|[{1, (1), 0.5, {random, 5.4, 1}}, {2, (2), 0.5, {left, 7.8, 1}}]|something|1646732402   |
++-------+----------------------------------------------------------------+---------+-------------+
+
+schema
+
+root
+ |-- Id: string (nullable = true)
+ |-- complex: array (nullable = true)
+ |    |-- element: struct (containsNull = true)
+ |    |    |-- key1: long (nullable = true)
+ |    |    |-- key2: string (nullable = true)
+ |    |    |-- key3: double (nullable = true)
+ |    |    |-- key4: struct (nullable = true)
+ |    |    |    |-- innerkey1: string (nullable = true)
+ |    |    |    |-- innerkey2: double (nullable = true)
+ |    |    |    |-- innerkey3: long (nullable = true)
+ |-- name: string (nullable = true)
+ |-- sentTimestamp: long (nullable = true)
+ 
+()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+
+ https://docs.databricks.com/_extras/notebooks/source/transform-complex-data-types-python.html
+ 
+ from pyspark.sql.functions import *
+from pyspark.sql.types import *
+ 
+# Convenience function for turning JSON strings into DataFrames.
+def jsonToDataFrame(json, schema=None):
+  # SparkSessions are available with Spark 2.0+
+  reader = spark.read
+  if schema:
+    reader.schema(schema)
+  return reader.json(sc.parallelize([json]))
+  
+
+# Using a struct
+schema = StructType().add("a", StructType().add("b", IntegerType()))
+events = jsonToDataFrame("""
+{
+  "a": {
+     "b": 1
+  }
+}
+""", schema)
+display(events.select("a.b"))
+
+
+
+# Using a map
+schema = StructType().add("a", MapType(StringType(), IntegerType()))
+                          
+events = jsonToDataFrame("""
+{
+  "a": {
+     "b": 1
+  }
+}
+""", schema)
+display(events.select("a.b"))
+
+
+Collecting multiple rows into an array - collect_list() and collect_set() can be used to aggregate items into an array.
+
+events = jsonToDataFrame("""
+[{ "x": 1 }, { "x": 2 }]
+""")
+ 
+display(events.select(collect_list("x").alias("x")))
+
+()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+
+Python convert list to array - https://gist.github.com/PawaritL/a9d50a7b80f93013bd739255dd206a70
+
+Read Nested JSON in Spark DataFrame - https://bigdataprogrammers.com/read-nested-json-in-spark-dataframe/
+
+
+Data Analysis Python and Pyspark - https://github.com/jonesberg/DataAnalysisWithPythonAndPySpark/tree/trunk/code
+
+
+
+https://livebook.manning.com/book/pyspark-in-action/chapter-6/v-10/63
+Listing 6.8. You can extract elements from an array using the getItem() method or the bracket notation. Both works with the col() function or the dot column notation.
+import pyspark.sql.functions as F
+
+array_subset = array_subset.select(
+    "name",
+    array_subset.genres[0].alias("dot_and_index"),
+    F.col("genres")[0].alias("col_and_index"),
+    array_subset.genres.getItem(0).alias("dot_and_method"),
+    F.col("genres").getItem(0).alias("col_and_method"),
+)
+
+
+https://mk-hasan.github.io/posts/2020/12/blog-post-6/
+
+()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+
+
