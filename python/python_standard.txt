@@ -1,0 +1,554 @@
+ref - https://realpython.com/python-pep8/
+PEP stands for Python Enhancement Proposal
+
+Naming Conventions:
+--------------------
+Function - Use a lowercase word or words. Separate words by underscores to improve readability - function, my_function
+
+Variable - Use a lowercase single letter, word, or words. Separate words with underscores to improve readabilit - x, var, my_variable
+
+Class 	 - Start each word with a capital letter. Do not separate words with underscores. This style is called camel case or pascal case.	Model, MyClas
+
+Method - Use a lowercase word or words. Separate words with underscores to improve readability.	class_method, method
+
+Constant - Use an uppercase single letter, word, or words. Separate words with underscores to improve readability.	CONSTANT, MY_CONSTANT, MY_LONG_CONSTANT
+
+Module - Use a short, lowercase word or words. Separate words with underscores to improve readability.	module.py, my_module.py
+
+Package	- Use a short, lowercase word or words. Do not separate words with underscores.
+
+
+Choosing name: 
+---------------
+The best way to name your objects in Python is to use descriptive names to make it clear what the object represents.
+
+>>> # Recommended
+>>> name = 'John Smith'
+>>> first_name, last_name = name.split()
+>>> print(last_name, first_name, sep=', ')
+
+don't use abbrevation style naming, after some time we might forget what that function does 
+# Not recommended
+def db(x):
+    return x * 2
+	
+# Recommended
+def multiply_by_two(x):
+    return x * 2
+
+Note: Never use single letter names as theses can be mistaken for 1 or 0
+O = 2  # This may look like you're trying to reassign 2 to zero
+
+Blank Lines:
+-------------
+Surround top-level functions and classes with two blank lines. Top-level functions and classes should be fairly self-contained and handle separate functionality. It makes sense to put extra vertical space around them, so that it’s clear they are separate:
+
+class MyFirstClass:
+    pass
+
+
+class MySecondClass:
+    pass
+
+
+def top_level_function():
+    return None
+
+
+Surround method definitions inside classes with a single blank line. Inside a class, functions are all related to one another. It’s good practice to leave only a single line between them:
+
+class MyClass:
+    def first_method(self):
+        return None
+
+    def second_method(self):
+        return None
+
+
+Use blank lines sparingly inside functions to show clear steps. Sometimes, a complicated function has to complete several steps before the return statement. To help the reader understand the logic inside the function, it can be helpful to leave a blank line between each step.
+
+In the example below, there is a function to calculate the variance of a list. This is two-step problem, so I have indicated each step by leaving a blank line between them. There is also a blank line before the return statement. This helps the reader clearly see what’s returned:
+
+def calculate_variance(number_list):
+    sum_list = 0
+    for number in number_list:
+        sum_list = sum_list + number
+    mean = sum_list / len(number_list)
+
+    sum_squares = 0
+    for number in number_list:
+        sum_squares = sum_squares + number**2
+    mean_squares = sum_squares / len(number_list)
+
+    return mean_squares - mean**2
+
+
+def calculate_variance(number_list):
+    sum_list = 0
+    for number in number_list:
+        sum_list = sum_list + number
+    mean = sum_list / len(number_list)
+
+    sum_squares = 0
+    for number in number_list:
+        sum_squares = sum_squares + number**2
+    mean_squares = sum_squares / len(number_list)
+
+    return mean_squares - mean**2
+	
+Maximum Line Length and Line Breaking:
+---------------------------------------
+PEP 8 suggests lines should be limited to 79 characters. This is because it allows you to have multiple files open next to one another, while also avoiding line wrapping.
+
+Of course, keeping statements to 79 characters or less is not always possible. PEP 8 outlines ways to allow statements to run over several lines.
+
+Python will assume line continuation if code is contained within parentheses, brackets, or braces:
+
+def function(arg_one, arg_two,
+             arg_three, arg_four):
+    return arg_one
+If it is impossible to use implied continuation, then you can use backslashes to break lines instead:
+
+from mypkg import example1, \
+    example2, example3
+However, if you can use implied continuation, then you should do so.
+
+If line breaking needs to occur around binary operators, like + and *, it should occur before the operator. This rule stems from mathematics. Mathematicians agree that breaking before binary operators improves readability. Compare the following two examples.
+
+Below is an example of breaking before a binary operator:
+
+# Recommended
+total = (first_variable
+         + second_variable
+         - third_variable)
+You can immediately see which variable is being added or subtracted, as the operator is right next to the variable being operated on.
+
+Now, let’s see an example of breaking after a binary operator:
+
+# Not Recommended
+total = (first_variable +
+         second_variable -
+         third_variable)
+Here, it’s harder to see which variable is being added and which is subtracted.
+
+Indentation:
+--------------
+The key indentation rules laid out by PEP 8 are the following:
+
+Use 4 consecutive spaces to indicate indentation.
+Prefer spaces over tabs.
+
+Tabs vs. Spaces
+As mentioned above, you should use spaces instead of tabs when indenting code. You can adjust the settings in your text editor to output 4 spaces instead of a tab character, when you press the Tab key.
+
+If you’re using Python 2 and have used a mixture of tabs and spaces to indent your code, you won’t see errors when trying to run it. To help you to check consistency, you can add a -t flag when running Python 2 code from the command line. The interpreter will issue warnings when you are inconsistent with your use of tabs and spaces:
+
+$ python2 -t code.py
+code.py: inconsistent use of tabs and spaces in indentation
+If, instead, you use the -tt flag, the interpreter will issue errors instead of warnings, and your code will not run. The benefit of using this method is that the interpreter tells you where the inconsistencies are:
+
+$ python2 -tt code.py
+  File "code.py", line 3
+    print(i, j)
+             ^
+TabError: inconsistent use of tabs and spaces in indentation
+Python 3 does not allow mixing of tabs and spaces. Therefore, if you are using Python 3, then these errors are issued automatically:
+
+$ python3 code.py
+  File "code.py", line 3
+    print(i, j)
+              ^
+TabError: inconsistent use of tabs and spaces in indentation
+You can write Python code with either tabs or spaces indicating indentation. But, if you’re using Python 3, you must be consistent with your choice. Otherwise, your code will not run. PEP 8 recommends that you always use 4 consecutive spaces to indicate indentation.
+
+Indentation Following Line Breaks
+When you’re using line continuations to keep lines to under 79 characters, it is useful to use indentation to improve readability. It allows the reader to distinguish between two lines of code and a single line of code that spans two lines. There are two styles of indentation you can use.
+
+The first of these is to align the indented block with the opening delimiter:
+
+def function(arg_one, arg_two,
+             arg_three, arg_four):
+    return arg_one
+Sometimes you can find that only 4 spaces are needed to align with the opening delimiter. This will often occur in if statements that span multiple lines as the if, space, and opening bracket make up 4 characters. In this case, it can be difficult to determine where the nested code block inside the if statement begins:
+
+x = 5
+if (x > 3 and
+    x < 10):
+    print(x)
+	
+# Not Recommended
+var = function(arg_one, arg_two,
+    arg_three, arg_four)
+When using a hanging indent, add extra indentation to distinguish the continued line from code contained inside the function. The following example is difficult to read because the code inside the function is at the same indentation level as the continued lines:
+
+# Not Recommended
+def function(
+    arg_one, arg_two,
+    arg_three, arg_four):
+    return arg_one
+Instead, it’s better to use a double indent on the line continuation. This helps you to distinguish between function arguments and the function body, improving readability:
+
+#recommended
+def function(
+        arg_one, arg_two,
+        arg_three, arg_four):
+    return arg_one
+
+
+Where to put closing braces:
+------------------------------
+Line continuations allow you to break lines inside parentheses, brackets, or braces. It’s easy to forget about the closing brace, but it’s important to put it somewhere sensible. Otherwise, it can confuse the reader. PEP 8 provides two options for the position of the closing brace in implied line continuations:
+
+Line up the closing brace with the first non-whitespace character of the previous line:
+
+list_of_numbers = [
+    1, 2, 3,
+    4, 5, 6,
+    7, 8, 9
+    ]
+Line up the closing brace with the first character of the line that starts the construct:
+
+list_of_numbers = [
+    1, 2, 3,
+    4, 5, 6,
+    7, 8, 9
+]
+
+Block Comments:
+----------------
+Use block comments to document a small section of code. They are useful when you have to write several lines of code to perform a single action, such as importing data from a file or updating a database entry. They are important as they help others understand the purpose and functionality of a given code block.
+
+PEP 8 provides the following rules for writing block comments:
+
+Indent block comments to the same level as the code they describe.
+Start each line with a # followed by a single space.
+Separate paragraphs by a line containing a single #.
+Here is a block comment explaining the function of a for loop. Note that the sentence wraps to a new line to preserve the 79 character line limit:
+
+for i in range(0, 10):
+    # Loop over i ten times and print out the value of i, followed by a
+    # new line character
+    print(i, '\n')
+	
+Sometimes, if the code is very technical, then it is necessary to use more than one paragraph in a block comment:
+
+def quadratic(a, b, c, x):
+    # Calculate the solution to a quadratic equation using the quadratic
+    # formula.
+    #
+    # There are always two solutions to a quadratic equation, x_1 and x_2.
+    x_1 = (- b+(b**2-4*a*c)**(1/2)) / (2*a)
+    x_2 = (- b-(b**2-4*a*c)**(1/2)) / (2*a)
+    return x_1, x_2
+	
+Inline comments:
+Inline comments explain a single statement in a piece of code. They are useful to remind you, or explain to others, why a certain line of code is necessary. Here’s what PEP 8 has to say about them:
+
+Use inline comments sparingly.
+Write inline comments on the same line as the statement they refer to.
+Separate inline comments by two or more spaces from the statement.
+Start inline comments with a # and a single space, like block comments.
+Don’t use them to explain the obvious.
+Below is an example of an inline comment:
+
+x = 5  # This is an inline comment
+Sometimes, inline comments can seem necessary, but you can use better naming conventions instead. Here’s an example:
+
+x = 'John Smith'  # Student Name
+
+Finally, inline comments such as these are bad practice as they state the obvious and clutter code:
+
+empty_list = []  # Initialize empty list
+
+x = 5
+x = x * 5  # Multiply x by 5
+
+Inline comments are more specific than block comments, and it’s easy to add them when they’re not necessary, which leads to clutter. You could get away with only using block comments so, unless you are sure you need an inline comment, your code is more likely to be PEP 8 compliant if you stick to block comments.
+
+
+Documentation String:
+-------------------------
+Documentation strings, or docstrings, are strings enclosed in double (""") or single (''') quotation marks that appear on the first line of any function, class, method, or module. You can use them to explain and document a specific block of code. There is an entire PEP, PEP 257, that covers docstrings, but you’ll get a summary in this section.
+
+The most important rules applying to docstrings are the following:
+
+Surround docstrings with three double quotes on either side, as in """This is a docstring""".
+
+Write them for all public modules, functions, classes, and methods.
+
+Put the """ that ends a multiline docstring on a line by itself:
+
+def quadratic(a, b, c, x):
+    """Solve quadratic equation via the quadratic formula.
+
+    A quadratic equation has the following form:
+    ax**2 + bx + c = 0
+
+    There always two solutions to a quadratic equation: x_1 & x_2.
+    """
+    x_1 = (- b+(b**2-4*a*c)**(1/2)) / (2*a)
+    x_2 = (- b-(b**2-4*a*c)**(1/2)) / (2*a)
+
+    return x_1, x_2
+	
+
+For one-line docstrings, keep the """ on the same line:
+
+def quadratic(a, b, c, x):
+    """Use the quadratic formula"""
+    x_1 = (- b+(b**2-4*a*c)**(1/2)) / (2*a)
+    x_2 = (- b-(b**2-4*a*c)**(1/2)) / (2*a)
+
+    return x_1, x_2	
+
+
+Whitespaces:
+# Recommended
+y = x**2 + 5
+z = (x+y) * (x-y)
+
+# Not Recommended
+y = x ** 2 + 5
+z = (x + y) * (x - y)
+
+# Not recommended
+if x > 5 and x % 2 == 0:
+    print('x is larger than 5 and divisible by 2!')
+	
+In the above example, the and operator has lowest priority. It may therefore be clearer to express the if statement as below:
+
+# Recommended
+if x>5 and x%2==0:
+    print('x is larger than 5 and divisible by 2!')
+	
+
+The following is not acceptable:
+
+# Definitely do not do this!
+if x >5 and x% 2== 0:
+    print('x is larger than 5 and divisible by 2!')
+	
+
+In slices, colons act as a binary operators. Therefore, the rules outlined in the previous section apply, and there should be the same amount of whitespace either side. The following examples of list slices are valid:
+
+list[3:4]
+
+# Treat the colon as the operator with lowest priority
+list[x+1 : x+2]
+
+# In an extended slice, both colons must be
+# surrounded by the same amount of whitespace
+list[3:4:5]
+list[x+1 : x+2 : x+3]
+
+# The space is omitted if a slice parameter is omitted
+list[x+1 : x+2 :]
+
+
+When to Avoid Adding Whitespace
+In some cases, adding whitespace can make code harder to read. Too much whitespace can make code overly sparse and difficult to follow. PEP 8 outlines very clear examples where whitespace is inappropriate.
+
+The most important place to avoid adding whitespace is at the end of a line. This is known as trailing whitespace. It is invisible and can produce errors that are difficult to trace.
+
+The following list outlines some cases where you should avoid adding whitespace:
+
+Immediately inside parentheses, brackets, or braces:
+
+# Recommended
+my_list = [1, 2, 3]
+
+# Not recommended
+my_list = [ 1, 2, 3, ]
+Before a comma, semicolon, or colon:
+
+x = 5
+y = 6
+
+# Recommended
+print(x, y)
+
+# Not recommended
+print(x , y)
+Before the open parenthesis that starts the argument list of a function call:
+
+def double(x):
+    return x * 2
+
+# Recommended
+double(3)
+
+# Not recommended
+double (3)
+Before the open bracket that starts an index or slice:
+
+# Recommended
+list[3]
+
+# Not recommended
+list [3]
+Between a trailing comma and a closing parenthesis:
+
+# Recommended
+tuple = (1,)
+
+# Not recommended
+tuple = (1, )
+To align assignment operators:
+
+# Recommended
+var1 = 5
+var2 = 6
+some_long_var = 7
+
+# Not recommended
+var1          = 5
+var2          = 6
+some_long_var = 7
+
+Programming Recommentations:
+-------------------------------
+Don’t compare Boolean values to True or False using the equivalence operator. You’ll often need to check if a Boolean value is True or False. When doing so, it is intuitive to do this with a statement like the one below:
+
+# Not recommended
+my_bool = 6 > 5
+if my_bool == True:
+    return '6 is bigger than 5'
+The use of the equivalence operator, ==, is unnecessary here. bool can only take values True or False. It is enough to write the following:
+
+# Recommended
+if my_bool:
+    return '6 is bigger than 5'
+	
+Use the fact that empty sequences are falsy in if statements. If you want to check whether a list is empty, you might be tempted to check the length of the list. If the list is empty, it’s length is 0 which is equivalent to False when used in an if statement. Here’s an example:
+
+# Not recommended
+my_list = []
+if not len(my_list):
+    print('List is empty!')
+However, in Python any empty list, string, or tuple is falsy. We can therefore come up with a simpler alternative to the above:
+
+# Recommended
+my_list = []
+if not my_list:
+    print('List is empty!')
+While both examples will print out List is empty!, the second option is simpler, so PEP 8 encourages it.
+
+Use is not rather than not ... is in if statements. If you are trying to check whether a variable has a defined value, there are two options. The first is to evaluate an if statement with x is not None, as in the example below:
+
+# Recommended
+if x is not None:
+    return 'x exists!'
+A second option would be to evaluate x is None and then have an if statement based on not the outcome:
+
+# Not recommended
+if not x is None:
+    return 'x exists!'
+	
+
+Don’t use if x: when you mean if x is not None:. Sometimes, you may have a function with arguments that are None by default. A common mistake when checking if such an argument, arg, has been given a different value is to use the following:
+
+# Not Recommended
+if arg:
+    # Do something with arg...
+This code checks that arg is truthy. Instead, you want to check that arg is not None, so it would be better to use the following:
+
+# Recommended
+if arg is not None:
+    # Do something with arg...
+	
+
+Use .startswith() and .endswith() instead of slicing. If you were trying to check if a string word was prefixed, or suffixed, with the word cat, it might seem sensible to use list slicing. However, list slicing is prone to error, and you have to hardcode the number of characters in the prefix or suffix. It is also not clear to someone less familiar with Python list slicing what you are trying to achieve:
+
+# Not recommended
+if word[:3] == 'cat':
+    print('The word starts with "cat"')
+However, this is not as readable as using .startswith():
+
+# Recommended
+if word.startswith('cat'):
+    print('The word starts with "cat"')
+Similarly, the same principle applies when you’re checking for suffixes. The example below outlines how you might check whether a string ends in jpg:
+
+# Not recommended
+if file_name[-3:] == 'jpg':
+    print('The file is a JPEG')
+While the outcome is correct, the notation is a bit clunky and hard to read. Instead, you could use .endswith() as in the example below:
+
+# Recommended
+if file_name.endswith('jpg'):
+    print('The file is a JPEG')
+	
+
+
+https://stackoverflow.com/questions/7008812/python-and-static-methods
+
+
+Python Calss Methods and Static Methods: 
+https://realpython.com/instance-class-and-static-methods-demystified/
+
+
+Class Methods
+Let’s compare that to the second method, MyClass.classmethod. I marked this method with a @classmethod decorator to flag it as a class method.
+
+Instead of accepting a self parameter, class methods take a cls parameter that points to the class—and not the object instance—when the method is called.
+
+Because the class method only has access to this cls argument, it can’t modify object instance state. That would require access to self. However, class methods can still modify class state that applies across all instances of the class.
+
+Static Methods
+The third method, MyClass.staticmethod was marked with a @staticmethod decorator to flag it as a static method.
+
+This type of method takes neither a self nor a cls parameter (but of course it’s free to accept an arbitrary number of other parameters).
+
+Therefore a static method can neither modify object state nor class state. Static methods are restricted in what data they can access - and they’re primarily a way to namespace your methods.
+
+https://nycdatascience.com/blog/community/events/best-naming-conventions-python-code/
+
+Single lowercase
+Often used for local variables in functions, such as x or i
+Single uppercase
+Often used to name matrices
+Lowercase word
+The most frequent naming convention for the widest variety of objects
+Lowercase word with underscores
+Same uses as Lowercase word, but for more complicated names
+Uppercase word
+Used for single-word static variables
+Uppercase word with underscores
+Used for multi-word static variables
+Capitalized words (aka CapWords or CamelCase)
+This is where each word is capitalized, and there are no spaces or underscores between them
+Used for naming classes (even if the name is just a single, capitalized word)
+Mixed Case
+This is where you start with a lowercase word followed by every other word capitalized
+This convention is predominantly used in Java and less in Python 
+Each of these options has different use cases. They are not only for aesthetics, but each option also helps you create meaningful objects in your code. 
+
+Names to Avoid
+Just as there are things you should do, there are things you shouldn’t. These are conventions you will want to avoid when writing Python code. 
+
+Lowercase letter “el” - instead, use a capital letter “L”
+Uppercase letter “oh” - “O” 
+Uppercase letter “eye” - “I”
+We avoid those names because in some fonts, they are indistinguishable from the numbers “1” and “0”, which makes it difficult for the user to understand what’s going on.
+
+You should also avoid using Python keywords and built-in class/function names for your variable names. For example, words like “max,” “sum,” “class,” and “list” are words that already exist in any Python environment. Therefore, to use them for something other than their function could make things messy and confusing.
+
+Modules and Packages
+A module is a collection of pre-built functions and other objects used to perform certain tasks. Modules should have short, lowercase names. Underscores can be used in the module name if it improves readability (like for names with multiple words). 
+
+Packages are like directories that contain modules and other objects. Python packages should follow the same convention, although the use of underscores in package names is discouraged. 
+
+Variables and Functions
+Do you know the difference between a function and a method?To understand the difference, think of the square-rectangle relationship: a method is a function, but not all functions are methods. A method is a special type of function that belongs to a class. Only objects of that class type can use these special functions. This is part of the object-oriented paradigm of Python and can help improve the organization and readability of our code. In Python, the names of variables and functions should be lowercase. Individual words can be separated by underscores when needed. This will improve readability within your code. Method names should follow the same conventions as function names. 
+
+Here are a few best practices to follow when naming your variables and functions:
+
+Constants should be represented by all capital letters and separated by underscores when needed 
+Use names that are representative of the meaning of the object rather than meaningless, single-character names
+Names i, j, and k should be reserved for representing index values
+Understanding and adopting these best practices is a great way to polish your coding skills. Writing more elegant code will not only impress your current colleagues, but it will also help you build better coding habits that may catch the attention of future employers. 
+
+Ready to advance your programming skills? Check out this three-course program focused on building and advancing your Python Programming skills, or start your journey towards data science mastery by enrolling in our upcoming remote live and online bootcamps this Fall. 
+
+
+
