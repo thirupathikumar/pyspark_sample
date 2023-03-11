@@ -1,0 +1,123 @@
+# Create a SparkSession
+spark = SparkSession.builder.appName("GetMinMaxValues").enableHiveSupport().getOrCreate()
+
+# Define the table name
+table_name = "my_table"
+
+# Get the column names of the table
+columns = [c.name for c in spark.table(table_name).schema]
+
+# Define a list to store the minimum and maximum values for each column
+min_max_values = []
+
+# Loop through each column and execute a query to get its minimum and maximum values
+for column in columns:
+    query = f"SELECT MIN({column}), MAX({column}) FROM {table_name}"
+    result = spark.sql(query).collect()[0]
+    min_val, max_val = result[0], result[1]
+    min_max_values.append((column, min_val, max_val))
+
+# Print the results
+for column, min_val, max_val in min_max_values:
+    print(f"{column}: MIN={min_val}, MAX={max_val}")
+
+# Stop the SparkSession
+spark.stop()
+
+
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import count, when, col
+
+# Create a SparkSession
+spark = SparkSession.builder.appName("GetNullCount").enableHiveSupport().getOrCreate()
+
+# Define the table name
+table_name = "my_table"
+
+# Get the column names of the table
+columns = [c.name for c in spark.table(table_name).schema]
+
+# Define a list to store the null and non-null counts for each column
+null_counts = []
+
+# Loop through each column and execute a series of count and when functions to get its null and non-null counts
+for column in columns:
+    query = spark.table(table_name).select(count(when(col(column).isNull(), True)).alias("null_count"),
+                                            count(when(col(column).isNotNull(), True)).alias("not_null_count"))
+    result = query.collect()[0]
+    null_count, not_null_count = result[0], result[1]
+    null_counts.append((column, null_count, not_null_count))
+
+# Print the results
+for column, null_count, not_null_count in null_counts:
+    print(f"{column}: NULL_COUNT={null_count}, NOT_NULL_COUNT={not_null_count}")
+
+# Stop the SparkSession
+spark.stop()
+
+
+
+from pyspark.sql import SparkSession
+
+# Create a SparkSession
+spark = SparkSession.builder.appName("GetNullCount").enableHiveSupport().getOrCreate()
+
+# Define the table name
+table_name = "my_table"
+
+# Get the ORC file path of the table
+orc_file_path = spark.sql(f"SHOW TABLE EXTENDED LIKE '{table_name}'").select("information").collect()[0][0].split("Location:")[1].strip()
+
+# Get the column names of the table
+columns = [c.name for c in spark.table(table_name).schema]
+
+# Define a list to store the null and non-null counts for each column
+null_counts = []
+
+# Loop through each column and execute a series of count functions to get its null and non-null counts
+for column in columns:
+    query = f"SELECT COUNT(*) AS row_count, COUNT({column}) AS not_null_count FROM ORC '{orc_file_path}'"
+    result = spark.sql(query).collect()[0]
+    row_count, not_null_count = result[0], result[1]
+    null_count = row_count - not_null_count
+    null_counts.append((column, null_count, not_null_count))
+
+# Print the results
+for column, null_count, not_null_count in null_counts:
+    print(f"{column}: NULL_COUNT={null_count}, NOT_NULL_COUNT={not_null_count}")
+
+# Stop the SparkSession
+spark.stop()
+
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import orc_summary
+
+# Create a SparkSession
+spark = SparkSession.builder.appName("ReadColumnStats").enableHiveSupport().getOrCreate()
+
+# Define the table name and column names
+table_name = "my_table"
+columns = ["col1", "col2", "col3"]
+
+# Get the ORC file path of the table
+orc_file_path = spark.sql(f"SHOW TABLE EXTENDED LIKE '{table_name}'").select("information").collect()[0][0].split("Location:")[1].strip()
+
+# Read the ORC file summary information
+orc_summary_df = spark.read.format("orc").load(orc_file_path).select(orc_summary(*columns).alias("summary"))
+
+# Extract the column-level statistics from the ORC file summary information
+for column in columns:
+    stats = orc_summary_df.select(f"summary['{column}']").collect()[0][0]
+    print(f"Column: {column}")
+    print(f"Minimum value: {stats.min}")
+    print(f"Maximum value: {stats.max}")
+    print(f"Number of nulls: {stats.null_count}")
+    print(f"Number of non-nulls: {stats.distinct_count - stats.null_count}")
+    print(f"Distinct count: {stats.distinct_count}")
+    print()
+    
+# Stop the SparkSession
+spark.stop()
+
