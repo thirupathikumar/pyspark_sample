@@ -285,3 +285,45 @@ customer_record = {"id": 1, "name": "John Doe", "age": 35, "address": "123 Main 
 scd_type2(customer_record)
 
 --analogies to remember the SQL query execution order
+
+
+
+
+Execute beeline query from spark session 
+from pyspark.sql import SparkSession
+spark = SparkSession.builder.appName("MyApp").enableHiveSupport().getOrCreate()
+
+
+query = "SELECT * FROM my_table"
+results = spark.sql(f'!beeline -u jdbc:hive2://<host>:<port>/<database> -n <username> -p <password> -e "{query}"')
+
+
+Note that the !beeline command is used to execute a command in the Beeline shell from within the Spark session. The -u option specifies the JDBC connection string, and the -n and -p options specify the username and password, respectively. The -e option specifies the Hive query to execute.
+
+The results variable will contain the output of the query as a string. If you want to convert the results to a DataFrame, you can use the spark.createDataFrame() method.
+
+
+
+import subprocess
+from pyspark.sql import SparkSession
+
+# Define the Beeline command
+beeline_cmd = "beeline -u jdbc:hive2://<host>:<port>/<database> -n <username> -p <password> -e '<query>'"
+
+# Launch a Spark session
+spark = SparkSession.builder.appName("MyApp").enableHiveSupport().getOrCreate()
+
+# Execute the Beeline command in a subprocess
+result = subprocess.check_output(beeline_cmd, shell=True)
+
+# Print the result
+print(result)
+
+
+Replace <host>, <port>, <database>, <username>, <password>, and <query> with the appropriate values for your environment and query.
+
+In this example, we define the beeline_cmd variable to hold the Beeline command we want to execute. We then launch a Spark session using the SparkSession API. Finally, we execute the Beeline command using the subprocess.check_output() method and print the result.
+
+Note that this approach may not be the most efficient or scalable, as it relies on running an external process for each query. It may be more efficient to use the Spark SQL API or the Hive JDBC driver to execute Hive queries directly from within the Spark session.
+
+
