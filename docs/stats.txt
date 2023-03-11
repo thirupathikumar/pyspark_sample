@@ -121,3 +121,167 @@ for column in columns:
 # Stop the SparkSession
 spark.stop()
 
+
+
+#!/bin/bash
+
+# Hive table details
+database=<database_name>
+table=<table_name>
+
+# Beeline connection details
+host=<hostname>
+port=<port_number>
+user=<username>
+password=<password>
+
+# Generate the column list for the table
+columns=$(beeline -u "jdbc:hive2://$host:$port/$database;auth=PLAIN" -n $user -p $password -e "show columns in $table;" | awk '{print $1}')
+
+# Loop through each column and generate the stats
+for column in $columns
+do
+  result=$(beeline -u "jdbc:hive2://$host:$port/$database;auth=PLAIN" -n $user -p $password -e "select min($column), max($column), count(case when $column is null then 1 end) from $table;")
+  echo "Column: $column"
+  echo "$result"
+done
+
+
+#!/bin/bash
+
+# Beeline connection details
+host=<hostname>
+port=<port_number>
+database=<database_name>
+user=<username>
+password=<password>
+
+# Query to execute
+query="SELECT * FROM mytable"
+
+# Execute the query using Beeline and format the output with pipe-delimited columns
+output=$(beeline -u "jdbc:hive2://$host:$port/$database;auth=PLAIN" -n $user -p $password -e "$query" --silent=true --outputformat=tsv2 --showHeader=false | sed 's/\t/|/g')
+
+# Print the output
+echo "$output"
+
+
+Mongo SCD Type2 in Python:
+-----------------------------
+import pymongo
+from datetime import datetime
+
+# Establish a connection to the MongoDB server
+client = pymongo.MongoClient("mongodb://localhost:27017/")
+db = client["mydatabase"]
+
+# Define a function to handle SCD type 2
+def scd_type2(collection, record):
+    # Check if the record already exists in the collection
+    existing_record = collection.find_one({"id": record["id"], "end_date": None})
+    if existing_record:
+        # Update the end_date of the existing record
+        collection.update_one({"_id": existing_record["_id"]},
+                              {"$set": {"end_date": datetime.utcnow()}})
+        # Insert a new record with the updated data and start_date
+        record["start_date"] = datetime.utcnow()
+        record["end_date"] = None
+        collection.insert_one(record)
+    else:
+        # Insert a new record with start_date and end_date as None
+        record["start_date"] = datetime.utcnow()
+        record["end_date"] = None
+        collection.insert_one(record)
+
+# Example usage
+customers = db["customers"]
+customer_record = {"id": 1, "name": "John Doe", "age": 35, "address": "123 Main St"}
+scd_type2(customers, customer_record)
+
+
+SCD Type2 with Mongo Collection:
+----------------------------------
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, lit, when
+from datetime import datetime
+
+# Initialize a Spark session
+spark = SparkSession.builder.appName("Mongo SCD Type 2").getOrCreate()
+
+# Read the Mongo collection into a PySpark DataFrame
+df = spark.read.format("mongo").option("uri", "mongodb://localhost:27017/mydatabase.customers").load()
+
+# Define a function to handle SCD type 2
+def scd_type2(df, record):
+    # Check if the record already exists in the DataFrame
+    existing_record = df.filter(col("id") == record["id"]) \
+                        .filter(col("end_date").isNull()) \
+                        .orderBy("start_date", ascending=False) \
+                        .limit(1)
+    if existing_record.count() > 0:
+        # Update the end_date of the existing record
+        existing_record = existing_record.withColumn("end_date", lit(datetime.utcnow()))
+        # Insert a new record with the updated data and start_date
+        new_record = existing_record.select(col("id"), col("name"), col("age"), col("address"), \
+                                             lit(datetime.utcnow()).alias("start_date"), \
+                                             lit(None).cast("timestamp").alias("end_date"))
+        df = df.union(new_record)
+    else:
+        # Insert a new record with start_date and end_date as None
+        new_record = spark.createDataFrame([(record["id"], record["name"], record["age"], record["address"], \
+                                              datetime.utcnow(), None)], \
+                                            ["id", "name", "age", "address", "start_date", "end_date"])
+        df = df.union(new_record)
+    return df
+
+# Example usage
+customer_record = {"id": 1, "name": "John Doe", "age": 35, "address": "123 Main St"}
+df = scd_type2(df, customer_record)
+
+# Write the updated DataFrame back to the Mongo collection
+df.write.format("mongo").option("uri", "mongodb://localhost:27017/mydatabase.customers").mode("overwrite").save()
+
+
+Pyspark SCD2: 
+from pymongo import MongoClient
+from datetime import datetime
+
+# Connect to the Mongo database and collection
+client = MongoClient('localhost', 27017)
+db = client['mydatabase']
+customers = db['customers']
+
+# Define a function to handle SCD type 2
+def scd_type2(customer_record):
+    # Check if the record already exists in the collection
+    existing_record = customers.find_one({"id": customer_record["id"], "end_date": None}, sort=[("start_date", -1)])
+    if existing_record:
+        # Update the end_date of the existing record
+        customers.update_one({"_id": existing_record["_id"]}, {"$set": {"end_date": datetime.utcnow()}})
+        # Insert a new record with the updated data and start_date
+        new_record = {
+            "id": customer_record["id"],
+            "name": customer_record["name"],
+            "age": customer_record["age"],
+            "address": customer_record["address"],
+            "start_date": datetime.utcnow(),
+            "end_date": None
+        }
+        customers.insert_one(new_record)
+    else:
+        # Insert a new record with start_date and end_date as None
+        new_record = {
+            "id": customer_record["id"],
+            "name": customer_record["name"],
+            "age": customer_record["age"],
+            "address": customer_record["address"],
+            "start_date": datetime.utcnow(),
+            "end_date": None
+        }
+        customers.insert_one(new_record)
+
+# Example usage
+customer_record = {"id": 1, "name": "John Doe", "age": 35, "address": "123 Main St"}
+scd_type2(customer_record)
+
+--analogies to remember the SQL query execution order
