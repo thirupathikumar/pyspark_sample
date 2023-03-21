@@ -335,6 +335,47 @@ mongo_df.write \
     .mode("append") \
     .saveAsTable("mytable")
 
+*****************************************************************************************************************************************
+
+is it good to store the mongo collection complex type as json in hive table 
+It depends on the specific use case and the nature of the complex data in the MongoDB collection. Storing complex data types such as nested arrays or documents in Hive as JSON strings can be a valid approach, but it also has some potential drawbacks:
+
+Query performance: If you need to run complex queries on the nested data, storing it as JSON may not be the most performant option. JSON data has to be parsed at query time, which can be slower than querying structured data.
+
+Data manipulation: It can be more difficult to manipulate nested data when it is stored as JSON strings. You may need to use specialized JSON manipulation functions in Hive or extract the data into a separate table or data frame for easier manipulation.
+
+Type safety: Storing complex data types as JSON can also make it harder to enforce type safety in your data. You may need to rely on external tools or libraries to validate the data before processing it.
+
+If your use case involves relatively simple queries on the nested data or if the data is predominantly read-only, storing it as JSON in Hive may be a reasonable approach. However, if you need to run complex queries or perform frequent updates on the data, it may be worth exploring other options such as flattening the data into separate columns or using a specialized data format such as Parquet.
+
+*****************************************************************************************************************************************
+If store as struct or array type in hive table and when the mongo collection remove some of the attributes how to handle that scenario
+If you store complex data types such as struct or array in Hive and the MongoDB collection removes some attributes, you will need to handle the missing attributes when querying or processing the data.
+
+Here are some options for handling missing attributes:
+
+Set default values: If you know what the default value should be for a missing attribute, you can set a default value when querying the data. For example, if you have a struct with fields name and age, and the age field is missing, you can set a default age of 0 when querying the data.
+
+Handle null values: If the missing attributes result in a null value in the data, you can handle the null values appropriately when querying the data. For example, you can filter out any rows with null values or use a coalesce function to replace null values with a default value.
+
+Update the Hive table schema: If the missing attributes are causing issues with querying or processing the data, you can update the Hive table schema to remove the missing attributes. This may involve recreating the table with a new schema or altering the existing schema.
+
+In general, it's important to carefully consider the impact of schema changes in the MongoDB collection on downstream systems such as Hive. Depending on the nature of the changes and the complexity of the data, you may need to update the schema in Hive, adjust your processing logic, or use a different approach to store and process the data.
+
+
+*****************************************************************************************************************************************
+
+pyspark select the records if any of the column has null values
+
+from pyspark.sql.functions as F
+
+null_df = df.filter(F.col("FName").isNull() | F.col("Lname").isNull() | F.col("Age").isNull())
+output_null=null_df.collect()
+print(output_null)
+
+not_null_df = df.filter(F.col("FName").isNotNull() | F.col("Lname").isNotNull() | F.col("Age").isNotNull())
+output_not_null=not_null_df.collect()
+print(output_not_null)
 
 
 
