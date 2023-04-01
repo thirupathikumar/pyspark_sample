@@ -1,0 +1,119 @@
+from pyspark.sql.types import StringType, IntegerType, FloatType, DoubleType, DecimalType, BooleanType, BinaryType, TimestampType, DateType, ArrayType, MapType, StructType, StructField
+
+def spark_to_hive_datatype(datatype):
+    if isinstance(datatype, StringType):
+        return "string"
+    elif isinstance(datatype, IntegerType):
+        return "int"
+    elif isinstance(datatype, FloatType):
+        return "float"
+    elif isinstance(datatype, DoubleType):
+        return "double"
+    elif isinstance(datatype, DecimalType):
+        return "decimal"
+    elif isinstance(datatype, BooleanType):
+        return "boolean"
+    elif isinstance(datatype, BinaryType):
+        return "binary"
+    elif isinstance(datatype, TimestampType):
+        return "timestamp"
+    elif isinstance(datatype, DateType):
+        return "date"
+    elif isinstance(datatype, ArrayType):
+        return "array<" + spark_to_hive_datatype(datatype.elementType) + ">"
+    elif isinstance(datatype, MapType):
+        return "map<" + spark_to_hive_datatype(datatype.keyType) + "," + spark_to_hive_datatype(datatype.valueType) + ">"
+    elif isinstance(datatype, StructType):
+        return "struct<" + ",".join([field.name + ":" + spark_to_hive_datatype(field.dataType) for field in datatype.fields]) + ">"
+    else:
+        raise ValueError("Unsupported datatype: " + str(datatype))
+
+# example usage
+print(spark_to_hive_datatype(StringType()))  # outputs "string"
+print(spark_to_hive_datatype(IntegerType()))  # outputs "int"
+print(spark_to_hive_datatype(ArrayType(StringType())))  # outputs "array<string>"
+print(spark_to_hive_datatype(StructType([StructField("id", IntegerType()), StructField("name", StringType())])))  # outputs "struct<id:int,name:string>"
+
+
+In this example, we define the spark_to_hive_datatype() function, which takes a Spark datatype as input and returns the corresponding Hive datatype as a string. The function uses a series of if-elif statements to match the Spark datatype with the corresponding Hive datatype. For complex datatypes such as arrays, maps, and structs, the function recursively calls itself to get the corresponding datatype of the nested elements.
+
+You can use the spark_to_hive_datatype() function to get the Hive datatype for any Spark datatype in your PySpark code.
+
+from pyspark.sql.functions import struct, col, array
+from pyspark.sql.types import StructType, StructField, StringType, ArrayType
+
+# create a dataframe with an array of structs
+df = spark.createDataFrame([([("John", "Doe"), ("Jane", "Smith")],)], ["names"])
+
+# get the schema of the array of structs column
+array_schema = df.select("names").schema.fields[0].dataType
+
+# convert the array of structs schema to Hive datatype
+hive_datatype = spark_to_hive_datatype(array_schema)
+
+# print the resulting Hive datatype
+print(hive_datatype)
+**************************************************************************************************************************************
+
+In this example, we first create a dataframe with a single column names which contains an array of structs. We then get the schema of the names column by selecting the column and accessing its dataType. Next, we pass the array_schema to the spark_to_hive_datatype() function to get the corresponding Hive datatype. Finally, we print the resulting Hive datatype.
+
+For this example, the output will be array<struct<_1:string,_2:string>>, which is the Hive datatype for an array of structs containing two string fields. Note that the output may be different for different schemas, depending on the types and nesting of the struct fields.
+
+Load Hive Table 
+from pyspark.sql import SparkSession
+
+# create SparkSession
+spark = SparkSession.builder.appName("HiveTable").enableHiveSupport().getOrCreate()
+
+# read Hive table
+hive_database = "example_database"
+hive_table = "example_table"
+df = spark.table(hive_database + "." + hive_table)
+
+# show table contents
+df.show()
+
+Missing and New Column 
+from pyspark.sql import SparkSession
+**************************************************************************************************************************************
+# create SparkSession
+spark = SparkSession.builder.appName("HiveTable").enableHiveSupport().getOrCreate()
+
+# create source dataframe
+df = spark.createDataFrame([(1, "John", 25)], ["id", "name", "age"])
+
+# set hive configuration
+spark.sql("SET hive.exec.dynamic.partition=true")
+spark.sql("SET hive.exec.dynamic.partition.mode=nonstrict")
+
+# create Hive table
+hive_table = "example_table"
+hive_database = "example_database"
+hive_table_location = "/user/hive/warehouse/" + hive_database + ".db/" + hive_table
+
+# check if table exists
+if not spark.catalog.tableExists(hive_database + "." + hive_table):
+    # create table if it doesn't exist
+    df.write.format("hive").mode("overwrite").option("path", hive_table_location).option("database", hive_database).option("table", hive_table).saveAsTable(hive_database + "." + hive_table)
+else:
+    # check for new columns
+    table_schema = spark.table(hive_database + "." + hive_table).schema
+    df_schema = df.schema
+    missing_columns = list(set(table_schema.names) - set(df_schema.names))
+    new_columns = list(set(df_schema.names) - set(table_schema.names))
+    if missing_columns:
+        # rename missing columns in table
+        for missing_column in missing_columns:
+            spark.sql(f"ALTER TABLE {hive_database}.{hive_table} CHANGE COLUMN {missing_column} {missing_column}_deleted STRING")
+    # add new columns to table
+    if new_columns:
+        for new_column in new_columns:
+            spark.sql(f"ALTER TABLE {hive_database}.{hive_table} ADD COLUMNS ({new_column} STRING)")
+    # insert records into table
+    df_write = df.select([col(column).alias(column+"_new") if column in missing_columns else col(column) for column in df.columns])
+    df_write.write.format("hive").mode("append").option("path", hive_table_location).option("database", hive_database).option("table", hive_table).saveAsTable(hive_database + "." + hive_table)
+
+# show table contents
+spark.table(hive_database + "." + hive_table).show()
+
+**************************************************************************************************************************************
