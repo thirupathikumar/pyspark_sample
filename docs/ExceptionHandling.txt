@@ -1,0 +1,300 @@
+from pyspark.sql.utils import AnalysisException, FileNotFoundException
+
+try:
+    # Your PySpark code that may raise a file not found exception
+    df = spark.read.csv("file.csv", header=True)
+except FileNotFoundException as e:
+    # Handle file not found exception
+    print("File not found: ", e)
+except AnalysisException as e:
+    # Handle analysis exception
+    print("Analysis exception: ", e)
+finally:
+    # Close the SparkSession
+    spark.stop()
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("example").getOrCreate()
+
+try:
+    # Your PySpark code that may raise an exception
+    df = spark.read.csv("file.csv", header=True)
+except Exception as e:
+    # Handle the exception
+    print("Error: ", e)
+finally:
+    # Close the SparkSession
+    spark.stop()
+
+It's a good practice to add exception handling in all the places where an exception may occur, rather than just writing it at the main entry point. This way, you can handle exceptions more effectively and provide more detailed error messages to the users.
+
+In a PySpark framework, you can consider adding exception handling in the following places:
+
+When loading data: When loading data from different sources, such as CSV, JSON, or databases, you should handle exceptions that may occur during the loading process, such as file not found errors, connection errors, or data format errors.
+
+When transforming data: When transforming data using PySpark functions or user-defined functions (UDFs), you should handle exceptions that may occur during the transformation process, such as data type errors or division by zero errors.
+
+When writing data: When writing data to different data sources, such as databases, files, or message queues, you should handle exceptions that may occur during the writing process, such as connection errors or write errors.
+
+In the main entry point: You should also add exception handling in the main entry point of your PySpark framework to catch any unhandled exceptions that may occur during the execution of the entire program.
+
+By adding exception handling in these places, you can make your PySpark framework more robust and prevent unexpected errors from crashing your program. It can also help you to provide more informative error messages to the users and make it easier to debug issues.
+
+******************************************************************************************************************************************
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+
+class MyPySparkFramework:
+    
+    def __init__(self, input_file, output_table, db_url):
+        self.input_file = input_file
+        self.output_table = output_table
+        self.db_url = db_url
+        self.spark = SparkSession.builder.appName("MyPySparkFramework").getOrCreate()
+        
+    def load_data(self):
+        try:
+            self.df = self.spark.read.csv(self.input_file, header=True, inferSchema=True)
+        except Exception as e:
+            print("Error loading data: ", e)
+            
+    def transform_data(self):
+        try:
+            self.df = self.df.withColumn("age_squared", col("age") ** 2)
+        except Exception as e:
+            print("Error transforming data: ", e)
+            
+    def write_data(self):
+        try:
+            self.df.write.format("jdbc") \
+                .option("url", self.db_url) \
+                .option("dbtable", self.output_table) \
+                .option("user", "username") \
+                .option("password", "password") \
+                .mode("overwrite") \
+                .save()
+        except Exception as e:
+            print("Error writing data: ", e)
+            
+    def run(self):
+        self.load_data()
+        self.transform_data()
+        self.write_data()
+        self.spark.stop()
+
+
+framework = MyPySparkFramework("data.csv", "output_table", "jdbc:mysql://localhost:3306/mydatabase")
+framework.run()
+
+Common Util Class
+class MyUtils:
+    
+    @staticmethod
+    def clean_string(s):
+        return s.strip().lower()
+    
+    @staticmethod
+    def square(n):
+        return n ** 2
+
+from utils import MyUtils
+def transform_data(self):
+    try:
+        self.df = self.df.withColumn("age_squared", MyUtils.square(col("age")))
+    except Exception as e:
+        print("Error transforming data: ", e)
+		
+******************************************************************************************************************************************
+Logging:
+import logging
+
+class MyPySparkFramework:
+    
+    def __init__(self, input_file, output_table, db_url):
+        self.input_file = input_file
+        self.output_table = output_table
+        self.db_url = db_url
+        self.spark = SparkSession.builder.appName("MyPySparkFramework").getOrCreate()
+        
+        # Set up logging
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        
+        file_handler = logging.FileHandler('framework.log')
+        file_handler.setLevel(logging.DEBUG)
+        
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+        
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
+        
+    def load_data(self):
+        try:
+            self.logger.info('Loading data from %s', self.input_file)
+            self.df = self.spark.read.csv(self.input_file, header=True, inferSchema=True)
+            self.logger.info('Loaded data successfully')
+        except Exception as e:
+            self.logger.error('Error loading data: %s', e)
+            
+    def transform_data(self):
+        try:
+            self.logger.info('Transforming data')
+            self.df = self.df.withColumn("age_squared", col("age") ** 2)
+            self.logger.info('Transformed data successfully')
+        except Exception as e:
+            self.logger.error('Error transforming data: %s', e)
+            
+    def write_data(self):
+        try:
+            self.logger.info('Writing data to %s', self.output_table)
+            self.df.write.format("jdbc") \
+                .option("url", self.db_url) \
+                .option("dbtable", self.output_table) \
+                .option("user", "username") \
+                .option("password", "password") \
+                .mode("overwrite") \
+                .save()
+            self.logger.info('Data written successfully')
+        except Exception as e:
+            self.logger.error('Error writing data: %s', e)
+            
+    def run(self):
+        self.load_data()
+        self.transform_data()
+        self.write_data()
+        self.spark.stop()
+
+In this modified MyPySparkFramework class, we've added a logging configuration in the constructor method. The logging configuration sets up a file handler and a console handler, both of which use the same log formatter to format log messages with a timestamp, logger name, log level, and message.
+
+Inside the load_data(), transform_data(), and write_data() methods, we use the self.logger object to log different types of messages depending on whether the operation succeeded or failed. For example, we use self.logger.info() to log an informational message when the data is successfully loaded or transformed, and self.logger.error() to log an error message when an exception occurs during the loading, transforming, or writing process.
+
+By logging different types of messages to different log levels, we can control the verbosity of our logs and make it easier to identify and troubleshoot errors in our PySpark framework.
+
+The console handler in the PySpark framework example I provided is used to log messages to the console, in addition to writing them to a file.
+
+This is useful during development and testing, as it allows developers to see log messages in real-time without having to open the log file separately. The console handler can be especially helpful when debugging issues that require manual interaction with the PySpark framework (such as troubleshooting a problem with data input or output).
+
+In the example I provided, the console handler is set to log messages with a log level of INFO or higher. This means that any messages logged at the INFO, WARNING, ERROR, or CRITICAL log levels will be displayed on the console. By contrast, messages logged at the DEBUG level will only be written to the log file and will not be displayed on the console.
+
+You can adjust the log levels and formatting of the console handler to suit your needs. For example, you might choose to log messages to the console in a different format than those written to the log file, or you might configure the console handler to only log messages at a certain log level.
+
+Only Log Handler:
+import logging
+
+logging.basicConfig(filename='framework.log', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+class MyPySparkFramework:
+    
+    def __init__(self, input_file, output_table, db_url):
+        self.input_file = input_file
+        self.output_table = output_table
+        self.db_url = db_url
+        self.spark = SparkSession.builder.appName("MyPySparkFramework").getOrCreate()
+        
+        self.logger = logging.getLogger(__name__)
+        
+    def load_data(self):
+        try:
+            self.logger.info('Loading data from %s', self.input_file)
+            self.df = self.spark.read.csv(self.input_file, header=True, inferSchema=True)
+            self.logger.info('Loaded data successfully')
+        except Exception as e:
+            self.logger.error('Error loading data: %s', e)
+            
+    def transform_data(self):
+        try:
+            self.logger.info('Transforming data')
+            self.df = self.df.withColumn("age_squared", col("age") ** 2)
+            self.logger.info('Transformed data successfully')
+        except Exception as e:
+            self.logger.error('Error transforming data: %s', e)
+            
+    def write_data(self):
+        try:
+            self.logger.info('Writing data to %s', self.output_table)
+            self.df.write.format("jdbc") \
+                .option("url", self.db_url) \
+                .option("dbtable", self.output_table) \
+                .option("user", "username") \
+                .option("password", "password") \
+                .mode("overwrite") \
+                .save()
+            self.logger.info('Data written successfully')
+        except Exception as e:
+            self.logger.error('Error writing data: %s', e)
+            
+    def run(self):
+        self.load_data()
+        self.transform_data()
+        self.write_data()
+        self.spark.stop()
+
+
+In this modified MyPySparkFramework class, we use the basicConfig() method of the logging module to configure a single log handler, which writes log messages to the file framework.log. We set the log level to DEBUG, which means that all log messages (including those at the INFO, WARNING, ERROR, and CRITICAL levels) will be written to the log file.
+
+We also set the log message format using the format argument, which specifies a string that includes placeholders for the timestamp, logger name, log level, and log message.
+
+Note that in this example, we don't use a console handler to log messages to the console. Instead, all log messages are written to the log file only.
+******************************************************************************************************************************************
+Capture Exception with StackTrace
+import logging
+
+logging.basicConfig(filename='framework.log', level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+class MyPySparkFramework:
+    
+    def __init__(self, input_file, output_table, db_url):
+        self.input_file = input_file
+        self.output_table = output_table
+        self.db_url = db_url
+        self.spark = SparkSession.builder.appName("MyPySparkFramework").getOrCreate()
+        
+        self.logger = logging.getLogger(__name__)
+        
+    def load_data(self):
+        try:
+            self.logger.info('Loading data from %s', self.input_file)
+            self.df = self.spark.read.csv(self.input_file, header=True, inferSchema=True)
+            self.logger.info('Loaded data successfully')
+        except Exception as e:
+            self.logger.error('Error loading data: %s', exc_info=True)
+            
+    def transform_data(self):
+        try:
+            self.logger.info('Transforming data')
+            self.df = self.df.withColumn("age_squared", col("age") ** 2)
+            self.logger.info('Transformed data successfully')
+        except Exception as e:
+            self.logger.error('Error transforming data: %s', exc_info=True)
+            
+    def write_data(self):
+        try:
+            self.logger.info('Writing data to %s', self.output_table)
+            self.df.write.format("jdbc") \
+                .option("url", self.db_url) \
+                .option("dbtable", self.output_table) \
+                .option("user", "username") \
+                .option("password", "password") \
+                .mode("overwrite") \
+                .save()
+            self.logger.info('Data written successfully')
+        except Exception as e:
+            self.logger.error('Error writing data: %s', exc_info=True)
+            
+    def run(self):
+        self.load_data()
+        self.transform_data()
+        self.write_data()
+        self.spark.stop()
+
+In this modified MyPySparkFramework class, we use the exc_info=True argument in the logging.error() method to capture the exception with a stack trace and write it to the log file. This will include the exception type, message, and stack trace in the log message.
+
+Note that it's generally a good practice to use the logging.exception() or logging.error() methods to log exceptions with stack traces, as this makes it easier to diagnose and fix errors in your code. However, you should also be mindful of the amount of detail you include in your log messages, as excessive logging can consume system resources and make it more difficult to find important information in your logs.
+
+******************************************************************************************************************************************
