@@ -1,0 +1,448 @@
+import org.apache.spark.sql.SparkSession
+import com.mongodb.spark._
+import com.mongodb.spark.config._
+
+object LoadDataToMongoDB {
+
+  def main(args: Array[String]): Unit = {
+
+    // Create a SparkSession
+    val spark = SparkSession.builder()
+      .appName("LoadDataToMongoDB")
+      .master("local[*]")
+      .config("spark.mongodb.output.uri", "mongodb://localhost/test_db.test_collection")
+      .getOrCreate()
+
+    // Load data from a CSV file
+    val df = spark.read
+      .option("header", "true")
+      .option("inferSchema", "true")
+      .csv("path/to/your/csv/file")
+
+    // Write the data to MongoDB
+    df.write.format("com.mongodb.spark.sql.DefaultSource")
+      .option("uri", "mongodb://localhost/test_db.test_collection")
+      .option("collection", "test_collection")
+      .mode("append")
+      .mongo()
+
+    // Stop the SparkSession
+    spark.stop()
+  }
+}
+
+When you write a DataFrame to MongoDB using Spark, the columns in the DataFrame are mapped to the fields in the MongoDB document based on their name.
+
+If the DataFrame has columns that don't match any field in the MongoDB document, those columns will be ignored during the write operation.
+
+If the MongoDB document has fields that don't match any column in the DataFrame, those fields will be left empty in the MongoDB document.
+
+So in your case, if you have a DataFrame with 3 columns and a MongoDB collection with 10 fields, only the fields in the MongoDB document that have the same name as the columns in the DataFrame will be populated with data. The other fields in the MongoDB document will be left empty.
+
+If you want to map the DataFrame columns to specific fields in the MongoDB document that have different names, you can use the option() method to specify the field names. For example:
+
+df.write
+  .option("uri", "mongodb://localhost/test_db.test_collection")
+  .option("collection", "test_collection")
+  .option("replaceDocument", "true")
+  .option("writeConcern.w", "majority")
+  .option("mapColumnToDocument.field1", "mongo_field1")
+  .option("mapColumnToDocument.field2", "mongo_field2")
+  .option("mapColumnToDocument.field3", "mongo_field3")
+  .mode("overwrite")
+  .mongo()
+  
+  
+replaceDocument and writeConcern.w are options you can set when writing data to MongoDB using Spark.
+
+replaceDocument is a boolean option that specifies whether to replace the entire document in MongoDB or only update the matching fields. If set to true, the entire document will be replaced with the new data. If set to false, only the matching fields will be updated.
+
+For example, suppose you have a MongoDB document with the following fields:
+
+
+{
+  "name": "John",
+  "age": 30,
+  "gender": "Male"
+}
+
+And you write a DataFrame to MongoDB with the following data:
+
+name,age
+Bob,25
+
+If you set replaceDocument to true, the entire document in MongoDB will be replaced with:
+{
+  "name": "Bob",
+  "age": 25
+}
+
+If you set replaceDocument to false, only the name and age fields will be updated, and the gender field will be left untouched:
+{
+  "name": "Bob",
+  "age": 25,
+  "gender": "Male"
+}
+
+writeConcern.w is an option that specifies the write concern for the write operation. Write concern is the level of acknowledgement requested from MongoDB for a write operation. It determines how many nodes in the MongoDB cluster must acknowledge the write operation before it is considered successful.
+
+For example, if you set writeConcern.w to majority, the write operation will only be considered successful if it is acknowledged by a majority of the nodes in the MongoDB cluster. If you set writeConcern.w to 1, the write operation will only be considered successful if it is acknowledged by at least one node in the MongoDB cluster.
+
+The available options for writeConcern.w are 1, majority, and w followed by an integer value representing the number of nodes that must acknowledge the write operation. For example, writeConcern.w = 3 specifies that the write operation must be acknowledged by at least 3 nodes in the MongoDB cluster.
+
+
+**************************************************************************************************************************************
+Update in mongo collection 
+To update a MongoDB collection based on a column from a CSV file and join the MongoDB collection and CSV data using the username field, you can follow these steps:
+
+1.Load the CSV data into a DataFrame using the spark.read method.
+val csvDf = spark.read.option("header", "true").csv("path/to/csv")
+
+
+2.Load the MongoDB collection into a DataFrame using the mongo method.
+val mongoDf = spark.read.mongo(ReadConfig(Map("uri" -> "mongodb://localhost:27017/db.collection")))
+
+3.Join the two DataFrames based on the username column
+val joinedDf = csvDf.join(mongoDf, Seq("username"))
+
+The complete code:
+import org.mongodb.spark.config.ReadConfig
+import org.apache.spark.sql.functions.col
+
+val csvDf = spark.read.option("header", "true").csv("path/to/csv")
+val mongoDf = spark.read.mongo(ReadConfig(Map("uri" -> "mongodb://localhost:27017/db.collection")))
+val joinedDf = csvDf.join(mongoDf, Seq("username"))
+joinedDf.write
+  .option("replaceDocument", "false")
+  .mongo(WriteConfig(Map("uri" -> "mongodb://localhost:27017/db.collection")))
+
+In this example, we assume that the username column in the CSV file is also present in the MongoDB collection. The join method is used to combine the two DataFrames based on this common column. Once the DataFrames are joined, the updated data can be written back to the MongoDB collection using the mongo method with the WriteConfig configuration.
+
+
+**************************************************************************************************************************************
+Limit and Threshold in Mongo DB:
+-----------------------------------
+
+The maximum BSON document size is 16 MB. It helps to ensure that single document can't use excessive amount of RAM. To store documents larger than maximum size, mongo DB provides the GridFS API. 
+
+Aggregation Pipeline Operation: 
+---------------------------------
+Each individual pipeline stage has limit of 100 MB of RAM. By default if a stage exceeds this limit Mongo DB produces error. For some pipeline stages you can allow pipeline processing to take up more space by using allowDiskUse option to enable aggregation pipeline stages to write data to the temporary files. 
+
+The $search aggregation stage is not restricted to 100 MB of RAM because it runs in a separate process. 
+
+Example of stages that can spill to disk when allowDiskSpace is true are - $bucket | $bucketAuto | $group | $sort (when sort operation is not supported by an index | $sortByCount 
+
+
+What is stages in mongo:
+--------------------------
+In MongoDB, the stages refer to the individual steps or operations that are performed in a pipeline. A pipeline is a series of stages that allow you to process and transform data as it passes through the pipeline.
+
+Each stage in the pipeline performs a specific operation on the data and passes the results to the next stage. There are several built-in stages in MongoDB that you can use to perform common operations, such as filtering, grouping, and sorting data. Here are some of the most commonly used stages in MongoDB:
+
+$match: Filters documents based on a specified condition or query.
+$group: Groups documents by a specified field or expression and calculates aggregate values for each group.
+$sort: Sorts documents by a specified field or expression.
+$project: Selects specific fields from the documents and returns only those fields in the output.
+$limit: Limits the number of documents that are returned in the output.
+$skip: Skips a specified number of documents in the pipeline.
+You can use these stages in various combinations to perform complex operations on your data. For example, you might use the $match stage to filter documents based on a certain criteria, followed by the $group stage to group the filtered documents by a certain field, and then the $sort stage to sort the grouped documents based on a specific order.
+
+To use the stages in MongoDB, you typically create a pipeline using the aggregation framework. The pipeline is a list of stages that are applied to the data in the order they appear in the pipeline. Once the pipeline is created, you can execute it using the aggregate method in the MongoDB client or driver.
+
+
+What is document in Mongo:
+In mongo db a document is the basic unit of data storage. It is analogous to a row in a relational database or a JSON object in a programming language. A document is a set of key value pairs, where the keys are string and the values can be any valid mongo db data type. 
+
+Documents are stored in collections, which are analogus to table in a relational database. Each document in a collection is unique and has its own set of fields and values. Unlike in a relational database where each row in a table has the same columns, in MongoDB, documents in a collection can have different fields and structuers. This makes mondo db a flexible and schemaless database, where you can store data in a way that makes sense for your specific use case. 
+
+Example:
+{
+  "_id": ObjectId("6094e238a547e52934a28c2a"),
+  "name": "John Doe",
+  "age": 35,
+  "email": "johndoe@example.com",
+  "address": {
+    "street": "123 Main St",
+    "city": "Anytown",
+    "state": "CA",
+    "zip": "12345"
+  }
+}
+
+This document has five fields: _id, name, age, email, and address. The _id field is a unique identifier for the document, which is automatically generated by MongoDB if it is not specified explicitly. The name, age, and email fields store basic information about the person, and the address field is a nested document that stores the person's address.
+
+Documents in MongoDB can be very complex and can contain arrays, nested documents, and other data types. The flexible and schemaless nature of MongoDB allows you to store data in a way that fits your needs, without being constrained by a fixed schema.
+
+**************************************************************************************************************************************
+
+According to CAP MongoDB is CP and Cassandra is AP 
+
+Mongo is non relational document schemaless database
+
+**************************************************************************************************************************************
+writeConcern and Ordered Inserts:
+-------------------------------------
+The insertMany method take two optional params - writeConcern and Ordered
+
+The writeConcern takes following params:
+------------------------------------------
+w - request acknowledgement that the write operation has propagated to a specific nuber of instances. 
+
+w:majority is a write concern that requires the write operation to be acknowledged by a majority of the replica set members. In a three-member replica set, for example, w:majority requires the write to be acknowledged by at least two members. This ensures that the data is written to a majority of the replica set members, making it highly durable and resilient. Using w:majority as a write concern ensures that your write operations are safe and reliable, and can withstand failures and network issues. However, it can also increase the latency of your write operations, since the data must be written to multiple nodes and acknowledged by a majority of them. Therefore, you should consider your application's requirements and performance constraints when choosing a write concern for your MongoDB deployment.
+
+Another parameter is  J - request acknowledgement that the write operation has been written to the on disk journal 
+
+We also have writout - this is to specify the timelimit to prevent write operation from blocking indefinitely. The time we specify is milliseconds We will get error if the operation does no complete within the speicified timelimit. 
+
+
+Ordered - If it is true then if one of the documents that you have inserted in the array contains an error and the processing stops, if false then it continue to the next document. 
+
+Ordered - is used to control the bulk write operation. The bulk write operation allows you to perform write operation as a single atomic transaction for the better performance. 
+When the ordered option is set to true (the default), MongoDB processes the write operations in the order they are specified in the bulk write request. If any of the write operations fail, MongoDB stops processing the remaining write operations and returns an error.
+
+For example, suppose you have a bulk write request that includes two insertOne operations followed by an updateOne operation:
+db.collection.bulkWrite([
+  { insertOne: { name: "Alice", age: 30 } },
+  { insertOne: { name: "Bob", age: 40 } },
+  { updateOne: { filter: { name: "Charlie" }, update: { $set: { age: 50 } } } }
+]);
+If the insertOne operations succeed but the updateOne operation fails, MongoDB will roll back the insertOne operations and return an error.
+
+When the ordered option is set to false, MongoDB processes the write operations in parallel, regardless of the order they are specified in the bulk write request. If any of the write operations fail, MongoDB continues processing the remaining write operations and returns a list of all the write errors at the end.
+
+It's important to note that the ordered option only affects the behavior of bulk write operations, and does not affect the behavior of individual write operations. By default, individual write operations in MongoDB are acknowledged and confirmed by the server. If you need more control over the write behavior, you can use write concerns or transactions to specify the level of acknowledgement and consistency that you require.
+
+
+Get the bulkwrite error when insert using ordered set to false:
+----------------------------------------------------------------
+Yes, when you perform a bulk write operation with ordered set to false, MongoDB will continue to process the remaining write operations even if some of them fail. At the end of the bulk write operation, MongoDB will return a bulk write result object that contains a list of any write errors that occurred during the operation.
+
+You can access the list of write errors using the BulkWriteResult.getWriteErrors() method. This method returns a list of BulkWriteError objects, each of which contains information about a single write error, including the error code, error message, and details about the write operation that caused the error.
+
+Here's an example that demonstrates how to perform a bulk write operation with ordered set to false and how to retrieve the list of write errors:
+
+// Create a list of write operations
+List<WriteModel<Document>> writes = new ArrayList<>();
+writes.add(new InsertOneModel<>(new Document("name", "Alice")));
+writes.add(new InsertOneModel<>(new Document("name", "Bob")));
+writes.add(new UpdateOneModel<>(new Document("name", "Charlie"), new Document("$set", new Document("age", 50))));
+
+// Create a BulkWriteOptions object with ordered set to false
+BulkWriteOptions options = new BulkWriteOptions().ordered(false);
+
+// Perform the bulk write operation
+BulkWriteResult result = collection.bulkWrite(writes, options);
+
+// Check if any write errors occurred
+if (result.getWriteErrors().size() > 0) {
+    System.out.println("Bulk write operation completed with errors:");
+    for (BulkWriteError error : result.getWriteErrors()) {
+        System.out.println("Error code: " + error.getCode());
+        System.out.println("Error message: " + error.getMessage());
+        System.out.println("Write model: " + error.getWriteModel());
+    }
+} else {
+    System.out.println("Bulk write operation completed successfully.");
+}
+In this example, the BulkWriteResult.getWriteErrors() method is called to retrieve the list of write errors, and a loop is used to iterate over the list and print out the details of each error. If no write errors occurred, a message indicating that the bulk write operation completed successfully is printed instead.
+
+Bulkwrite using Pyspark:
+-------------------------
+To perform a bulk write to MongoDB in PySpark, you can use the pyspark.sql.functions.col method to select columns from a DataFrame, and then use the pyspark.sql.functions.struct method to create a struct that represents a single document to be inserted or updated in MongoDB. You can then use the pymongo package to connect to MongoDB and perform the bulk write operation.
+
+Here's an example that demonstrates how to perform a bulk write operation in PySpark using the pymongo package:
+from pyspark.sql.functions import col, struct
+from pymongo import MongoClient
+
+# Create a PySpark DataFrame from a CSV file
+df = spark.read.csv("data.csv", header=True, inferSchema=True)
+
+# Select columns from the DataFrame and create a struct
+documents = df.select(struct(col("username"), col("age"), col("email")).alias("document"))
+
+# Convert the DataFrame to a list of dictionaries
+documents = documents.rdd.map(lambda x: x.asDict()).collect()
+
+# Connect to MongoDB and perform the bulk write operation
+client = MongoClient("mongodb://localhost:27017")
+collection = client["mydatabase"]["mycollection"]
+collection.bulk_write([pymongo.InsertOne(document) for document in documents])
+
+
+In this example, we first create a PySpark DataFrame from a CSV file and select the columns we want to insert or update in MongoDB. We then use the struct method to create a struct that represents a single document in MongoDB, and collect the documents into a list of dictionaries.
+
+We then connect to MongoDB using the pymongo package and perform the bulk write operation by calling the bulk_write method on the MongoDB collection object. We use a list comprehension to create a list of InsertOne objects from the list of documents, and pass the list of InsertOne objects to the bulk_write method.
+
+Note that you may need to adjust the code to suit your specific use case, depending on the structure of your CSV file and the schema of your MongoDB collection.
+
+**************************************************************************************************************************************
+Pyspark Mongo Overwrite the Data:
+----------------------------------
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+
+# Create a PySpark DataFrame from the existing data in MongoDB
+spark = SparkSession.builder.appName("Incremental Update").getOrCreate()
+df = spark.read.format("com.mongodb.spark.sql.DefaultSource") \
+    .option("uri", "mongodb://localhost:27017/mydatabase.mycollection") \
+    .load()
+
+# Perform your updates on the DataFrame
+updated_df = df.withColumn("new_column", col("existing_column") * 2)
+
+# Write the updated DataFrame back to MongoDB, replacing the existing data
+updated_df.write.format("com.mongodb.spark.sql.DefaultSource") \
+    .option("uri", "mongodb://localhost:27017/mydatabase.mycollection") \
+    .option("replaceDocument", "true") \
+    .option("writeConcern.w", "majority") \
+    .mode("overwrite") \
+    .save()
+
+replaceDocument option to true to replace the existing data with the updated data, and set the writeConcern.w option to majority to ensure that the write is acknowledged by a majority of the nodes in the replica set. Finally, we set the mode as overwrite to replace any existing data in the collection with the updated data.
+
+Mongo Update if record exists else insert:
+--------------------------------------------
+from pyspark.sql import SparkSession
+
+# Create a Spark session
+spark = SparkSession.builder \
+    .appName("MongoDB Update and Insert") \
+    .config("spark.mongodb.input.uri", "mongodb://localhost:27017/db.collection") \
+    .config("spark.mongodb.output.uri", "mongodb://localhost:27017/db.collection") \
+    .getOrCreate()
+
+# Read the input data into a DataFrame
+input_df = spark.read.csv("input_data.csv", header=True, inferSchema=True)
+
+# Read the existing data from MongoDB into a DataFrame
+existing_df = spark.read.format("com.mongodb.spark.sql.DefaultSource") \
+    .option("uri", "mongodb://localhost:27017/db.collection") \
+    .load()
+
+# Join the input data with the existing data based on the join column
+joined_df = input_df.join(existing_df, "join_column", "left_outer")
+
+# Update the existing records in MongoDB
+update_df = joined_df.filter(joined_df.existing_column.isNotNull()) \
+    .withColumn("updated_column", "new_value")
+
+update_df.write.format("com.mongodb.spark.sql.DefaultSource") \
+    .option("uri", "mongodb://localhost:27017/db.collection") \
+    .option("replaceDocument", "true") \
+    .option("writeConcern.w", "majority") \
+    .mode("append") \
+    .save()
+
+# Insert the new records into MongoDB
+insert_df = joined_df.filter(joined_df.existing_column.isNull())
+
+insert_df.write.format("com.mongodb.spark.sql.DefaultSource") \
+    .option("uri", "mongodb://localhost:27017/db.collection") \
+    .option("replaceDocument", "false") \
+    .option("writeConcern.w", "majority") \
+    .mode("append") \
+    .save()
+
+
+update with replaceDocument set to false:
+--------------------------------------------
+When you update an existing document in MongoDB using the replaceOne() method with replaceDocument set to false, the original document is replaced with the new one, but the _id field remains the same. This means that there is still only one document with that _id value.
+
+When you query for that document, you will get the latest updated record with all the fields that were updated. The previous version of the document will no longer exist in the collection. If you want to keep a history of changes to a document, you can either create a new document with a new _id each time you update it, or you can use the $push operator to add the updated document to an array field in the original document.
+
+update with replaceDocument set to true:
+------------------------------------------
+When you update an existing document in MongoDB using the replaceOne() method with replaceDocument set to true, the original document is replaced with the new one, but the _id field remains the same. This means that there is still only one document with that _id value.
+
+When you query for that document, you will get only the latest updated record with all the fields that were updated. The previous version of the document will no longer exist in the collection. If you want to keep a history of changes to a document, you can either create a new document with a new _id each time you update it, or you can use the $push operator to add the updated document to an array field in the original document.
+
+$push in mongo:
+--------------
+$push is an operator in MongoDB that is used to add an element to an array field in a document.
+
+When you use $push, MongoDB appends a specified value to an array field. If the field is not an array, the operator creates the array with the specified value as its element.
+
+Here's an example of how $push can be used in a MongoDB update operation:
+
+db.collection.update(
+   { _id: 1 },
+   { $push: { scores: 89 } }
+)
+
+In this example, we are updating a document with _id of 1 in the collection collection. We are using the $push operator to add a value of 89 to the scores array field in the document. If the scores field does not exist, MongoDB will create it as a new array field with the value 89 as its first element.
+
+Note that $push only adds an element to the array, it does not remove any duplicates. If you want to avoid duplicates, you can use $addToSet instead.
+
+Schema Validation:
+---------------------
+Strict - Mongo DB applies validation rules to all inserts and updates
+
+Moderate - Applies validation rules to inserts and to updates on existing documents that already fulfil the validation creteria. Updates to existing docs that don't fullfil the validation creteria are not checked for validation 
+
+Validation Rule for the Existing Document:
+--------------------------------------------
+Assume I have collection with multiple documents and now apply the validation rule but there are some documents that does not satisfy the validation rule what happen to that.
+
+When you apply a validation rule to an existing collection in MongoDB, the rule is not applied retroactively to existing documents. This means that any documents that already exist in the collection will not be validated against the new schema until they are modified.
+
+For example, if you add a validation rule to a collection that requires a certain field to be present in all documents, any documents that already exist in the collection without that field will not be rejected until they are updated.
+
+However, if you try to insert or update a document that does not match the validation rule, MongoDB will reject the operation with a validation error.
+
+If you want to apply the validation rule retroactively to existing documents, you can use the validate command to validate all existing documents in the collection:
+
+db.runCommand({
+  validate: "collection_name",
+  full: true
+})
+
+This will validate all documents in the collection against the validation rule and return a list of any documents that do not match the rule. Note that this command can be slow for large collections, so use it with caution.
+
+Once the validation rule is applied to the collection, any new documents that are inserted or updated must match the validation rule, or the operation will be rejected with a validation error.
+
+
+From pyspark I write to mongo by setting the replaceDocument to false will it create the new _id always in append mode
+-----------------------------------------------------------------------------------------------------------------------------
+If you set the replaceDocument option to false when writing to MongoDB from PySpark, the MongoDB server will perform an "upsert" operation, meaning that it will attempt to update the existing document matching the _id field, and if no matching document is found, it will insert a new document.
+
+If a matching document is found and updated, the _id field will not change, and the same _id will be used for the updated document. This is because the _id field is immutable and cannot be changed after it is set.
+
+If no matching document is found and a new document is inserted, a new _id value will be generated by MongoDB and assigned to the new document. This _id value will be unique and different from any existing _id values in the collection.
+
+So, if you write to MongoDB using PySpark with replaceDocument set to false, new documents will be created with new unique _id values if no matching documents are found, but if a matching document is found and updated, the same _id value will be used
+
+Upsert based on non _id column in pyspark:
+---------------------------------------------
+You can perform an upsert based on a different column other than _id by specifying the column name as the value for the upsertFields option when writing to MongoDB from PySpark.
+
+For example, let's say you have a collection my_collection with the following documents:
+{ "name": "Alice", "age": 25 }
+{ "name": "Bob", "age": 30 }
+{ "name": "Charlie", "age": 35 }
+
+And you want to perform an upsert based on the name field. Here's an example PySpark code that would achieve this:
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("MongoDB").getOrCreate()
+
+df = spark.createDataFrame([
+  ("Alice", 26),
+  ("Bob", 31),
+  ("David", 40)
+], ["name", "age"])
+
+df.write.format("mongo").mode("append") \
+    .option("database", "my_database") \
+    .option("collection", "my_collection") \
+    .option("replaceDocument", "false") \
+    .option("upsertFields", "name") \
+    .save()
+
+In this code, we specify the upsertFields option with the value "name", which tells MongoDB to perform an upsert based on the name field. When writing the df DataFrame to MongoDB, MongoDB will search for a document with a matching name field, and if found, it will update the document with the new age value. If no matching document is found, it will insert a new document with the name and age values.
+
+
+
+
+
+**************************************************************************************************************************************
